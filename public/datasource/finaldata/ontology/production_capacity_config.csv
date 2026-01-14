@@ -1,0 +1,9 @@
+﻿line_id,line_name,line_type,factory_id,factory_name,workshop,product_family,applicable_products,daily_capacity,equipment_count,shifts_per_day,workers_per_shift,utilization_rate,takt_time_minutes,changeover_time_hours,maintenance_frequency_days,quality_yield_rate,status,theoretical_daily_capacity,actual_daily_capacity,monthly_capacity
+LINE-001,旋风系列总装线,总装线,FAC-001,深圳智造工厂,总装车间A,旋风系列,"P0001,P0002",120,5,2,15,0.85,12,2.0,7,0.98,Active,120,100,2200
+LINE-002,巡风系列总装线,总装线,FAC-001,深圳智造工厂,总装车间A,巡风系列,"P0003,P0004,P0005",100,4,2,12,0.88,15,1.5,7,0.97,Active,100,85,1870
+LINE-003,极风系列总装线,总装线,FAC-001,深圳智造工厂,总装车间B,极风系列,"P0006,P0007,P0008",90,4,2,14,0.82,18,2.5,5,0.96,Active,90,71,1562
+LINE-004,霸风系列总装线,总装线,FAC-002,东莞制造基地,工业品车间,霸风系列,"P0009,P0010",80,3,2,10,0.9,20,1.0,7,0.99,Active,80,71,1562
+LINE-005,机身生产线,组件生产线,FAC-001,深圳智造工厂,组件车间A,机身总成,"M0001,M0010,M0020",300,8,3,20,0.87,8,3.0,10,0.95,Active,300,248,5456
+LINE-006,飞控组装线,组件生产线,FAC-001,深圳智造工厂,组件车间A,飞控总成,"M0002,M0011,M0021",350,6,3,18,0.92,7,2.0,7,0.97,Active,350,312,6864
+LINE-007,动力总成线,组件生产线,FAC-002,东莞制造基地,动力车间,动力系统,"M0004,M0013,M0023",280,7,2,16,0.86,9,2.5,5,0.96,Active,280,231,5082
+LINE-008,电池组装线,组件生产线,FAC-002,东莞制造基地,电池车间,电池系统,M0024,200,5,2,12,0.84,10,1.5,7,0.98,Active,200,165,3630

@@ -1,0 +1,12 @@
+event_id,event_date,event_type,severity,supplier_id,supplier_name,material_id,material_code,material_name,description,status
+QE0001,2024-11-15,defect,high,SUP-035,北京智能视觉科技公司,M0001,ASSY-BODY-PLA-01,入门塑料机身总成,机身表面划痕超标,已关闭
+QE0002,2024-10-22,delay,medium,SUP-024,深圳云台技术有限公司,M0002,ASSY-FC-BASIC,基础飞控总成,交付延迟3天,已关闭
+QE0003,2024-12-01,defect,critical,SUP-023,舜宇光学科技有限公司,M0003,PART-CAM-FIX-12MP,1200万像素固定相机,相机模组失效率高,处理中
+QE0004,2024-09-18,rejection,high,SUP-003,意法半导体（ST）亚太区,M0004,ASSY-PWR-STD,标准动力系统总成,电机性能不达标,已关闭
+QE0005,2024-11-28,delay,low,SUP-018,比亚迪电池有限公司,M0005,PART-BAT-2S-3000,标准智能电池2S3000mAh,交付延迟1天,已关闭
+QE0006,2024-10-05,defect,medium,SUP-022,豪威科技（OmniVision）,M0007,PART-CAM-FIX-20MP,2000万像素固定相机,色彩偏差,已关闭
+QE0007,2024-11-10,complaint,low,SUP-019,LG化学电池韩国,M0008,PART-BAT-3S-4000,增强智能电池3S4000mAh,包装破损,已关闭
+QE0008,2024-09-25,defect,high,SUP-021,索尼半导体解决方案,M0010,ASSY-BODY-CF-01,碳纤维机身总成,碳纤维层压气泡,已关闭
+QE0009,2024-12-05,delay,medium,SUP-034,东莞FR4覆铜板厂,M0011,ASSY-FC-ADV,高级飞控总成,交付延迟2天,处理中
+QE0010,2024-10-30,defect,critical,SUP-023,舜宇光学科技有限公司,M0012,PART-CAM-GIMBAL-1INCH,1英寸三轴云台相机,云台电机异响,已关闭
+

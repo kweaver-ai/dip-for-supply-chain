@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Supply Chain Brain Logo -->
+  <!-- Main brain shape -->
+  <circle cx="50" cy="50" r="45" fill="none" stroke="rgb(99, 102, 241)" stroke-width="2"/>
+  <path d="M 30 50 Q 50 30, 70 50 Q 50 70, 30 50" fill="rgb(99, 102, 241)" opacity="0.2"/>
+  
+  <!-- Neural network nodes -->
+  <circle cx="35" cy="40" r="4" fill="rgb(99, 102, 241)"/>
+  <circle cx="50" cy="35" r="4" fill="rgb(99, 102, 241)"/>
+  <circle cx="65" cy="40" r="4" fill="rgb(99, 102, 241)"/>
+  <circle cx="40" cy="55" r="4" fill="rgb(99, 102, 241)"/>
+  <circle cx="50" cy="60" r="4" fill="rgb(99, 102, 241)"/>
+  <circle cx="60" cy="55" r="4" fill="rgb(99, 102, 241)"/>
+  <circle cx="50" cy="50" r="6" fill="rgb(99, 102, 241)"/>
+  
+  <!-- Connection lines -->
+  <line x1="35" y1="40" x2="50" y2="50" stroke="rgb(99, 102, 241)" stroke-width="1.5" opacity="0.6"/>
+  <line x1="50" y1="35" x2="50" y2="50" stroke="rgb(99, 102, 241)" stroke-width="1.5" opacity="0.6"/>
+  <line x1="65" y1="40" x2="50" y2="50" stroke="rgb(99, 102, 241)" stroke-width="1.5" opacity="0.6"/>
+  <line x1="40" y1="55" x2="50" y2="50" stroke="rgb(99, 102, 241)" stroke-width="1.5" opacity="0.6"/>
+  <line x1="60" y1="55" x2="50" y2="50" stroke="rgb(99, 102, 241)" stroke-width="1.5" opacity="0.6"/>
+  <line x1="50" y1="60" x2="50" y2="50" stroke="rgb(99, 102, 241)" stroke-width="1.5" opacity="0.6"/>
+  
+  <!-- Supply chain arrows -->
+  <path d="M 20 50 L 25 50 M 23 47 L 25 50 L 23 53" stroke="rgb(99, 102, 241)" stroke-width="2" fill="none"/>
+  <path d="M 75 50 L 80 50 M 77 47 L 80 50 L 77 53" stroke="rgb(99, 102, 241)" stroke-width="2" fill="none"/>
+</svg>
+
+
+
+
+

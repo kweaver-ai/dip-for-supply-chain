@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Alternative Suppliers CSV</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        table { border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        .info { background-color: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Alternative Suppliers CSV Test</h1>
+    <div class="info">
+        <strong>Test Time:</strong> <span id="testTime"></span><br>
+        <strong>CSV Path:</strong> /datasource/finaldata/ontology/alternative_suppliers.csv
+    </div>
+    <button onclick="loadCSV()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Load CSV</button>
+    <button onclick="testFilters()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; margin-left: 10px;">Test Filters</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        document.getElementById('testTime').textContent = new Date().toLocaleString();
+        
+        async function loadCSV() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                // Add timestamp to bypass cache
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/datasource/finaldata/ontology/alternative_suppliers.csv?t=${timestamp}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const text = await response.text();
+                const lines = text.split('\n').filter(line => line.trim());
+                
+                resultDiv.innerHTML = `
+                    <h2 class="success">✅ CSV Loaded Successfully!</h2>
+                    <p><strong>Total lines:</strong> ${lines.length}</p>
+                    <p><strong>Total records:</strong> ${lines.length - 1} (excluding header)</p>
+                    <p><strong>Header:</strong></p>
+                    <pre>${lines[0]}</pre>
+                    <p><strong>First 3 records:</strong></p>
+                    <table>
+                        <tr>
+                            ${lines[0].split(',').map(h => `<th>${h}</th>`).join('')}
+                        </tr>
+                        ${lines.slice(1, 4).map(line => `
+                            <tr>
+                                ${line.split(',').map(cell => `<td>${cell}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </table>
+                `;
+                
+                // Store data for filter test
+                window.csvData = lines;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<h2 class="error">❌ Error loading CSV</h2><p>${error.message}</p>`;
+            }
+        }
+        
+        async function testFilters() {
+            if (!window.csvData) {
+                alert('Please load CSV first!');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('result');
+            const testCodes = [
+                'PART-SPRAYER-16L',
+                'RAW-AL-ALLOY',
+                'RAW-FR4-CCL',
+                'RAW-CF-PLATE-3MM',
+                'PART-PCB-2L'
+            ];
+            
+            let html = '<h2>Filter Test Results</h2><table><tr><th>Material Code</th><th>Matches Found</th><th>Status</th></tr>';
+            
+            for (const code of testCodes) {
+                const matches = window.csvData.filter(line => line.includes(code));
+                const count = matches.length;
+                const status = count > 0 ? '✅' : '❌';
+                const color = count > 0 ? 'green' : 'red';
+                
+                html += `<tr>
+                    <td><strong>${code}</strong></td>
+                    <td style="color: ${color}">${count}</td>
+                    <td>${status}</td>
+                </tr>`;
+            }
+            
+            html += '</table>';
+            
+            // Show details for PART-SPRAYER-16L
+            const sprayerMatches = window.csvData.filter(line => line.includes('PART-SPRAYER-16L'));
+            if (sprayerMatches.length > 0) {
+                html += '<h3>PART-SPRAYER-16L Details:</h3><pre>';
+                sprayerMatches.forEach(line => {
+                    html += line + '\n';
+                });
+                html += '</pre>';
+            }
+            
+            resultDiv.innerHTML = html;
+        }
+        
+        // Auto-load on page load
+        window.onload = () => {
+            loadCSV();
+        };
+    </script>
+</body>
+</html>
+
+

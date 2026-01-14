@@ -1,0 +1,823 @@
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { 
+  Truck, Factory, Package, Users, DollarSign, 
+  Zap, Search, AlertTriangle, ArrowRight, ChevronLeft, ChevronRight,
+  MessageSquare, RefreshCw, Settings, TrendingUp, Activity, Globe,
+  Edit, Trash2, Plus
+} from 'lucide-react';
+import { useI18n } from './i18n/context';
+import { buildGraphData, updateProduct, deleteProduct, addProduct, updateMaterial, deleteMaterial, addMaterial, updateSupplier, deleteSupplier, addSupplier } from './services/dataService';
+import type { GraphNode, GraphLink } from './services/dataService';
+import { productsData, materialsData, suppliersData } from './data/mockData';
+
+const SupplyChainApp = () => {
+  const { locale, setLocale, t } = useI18n();
+  const [selectedId, setSelectedId] = useState('PROD-002');
+  const [simulationMode, setSimulationMode] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    nodeId: string;
+    nodeType: string;
+  } | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editingNode, setEditingNode] = useState<any>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newNodeType, setNewNodeType] = useState<'SUPPLIER' | 'MATERIAL' | 'PRODUCT' | 'ORDER' | 'OPPORTUNITY' | null>(null);
+  
+  // 从数据服务构建图谱数据 - 使用状态以便刷新
+  const [graphData, setGraphData] = useState(() => buildGraphData());
+  
+  // 根据当前语言生成节点数据（添加翻译名称）
+  const NODES = useMemo(() => {
+    return {
+      suppliers: graphData.suppliers.map(s => ({
+        ...s,
+        name: t(`nodes.suppliers.${s.id}`) !== `nodes.suppliers.${s.id}` 
+          ? t(`nodes.suppliers.${s.id}`) 
+          : s.name, // 如果翻译不存在，使用原始名称
+        status: s.statusKey ? t(`sidebar.${s.statusKey}`) : '',
+      })),
+      materials: graphData.materials.map(m => ({
+        ...m,
+        name: t(`nodes.materials.${m.id}`) !== `nodes.materials.${m.id}` 
+          ? t(`nodes.materials.${m.id}`) 
+          : m.name,
+      })),
+      products: graphData.products.map(p => ({
+        ...p,
+        name: t(`nodes.products.${p.id}`) !== `nodes.products.${p.id}` 
+          ? t(`nodes.products.${p.id}`) 
+          : p.name,
+      })),
+      orders: graphData.orders.map(o => ({
+        ...o,
+        name: t(`nodes.orders.${o.id}`) !== `nodes.orders.${o.id}` 
+          ? t(`nodes.orders.${o.id}`) 
+          : o.name,
+        status: o.statusKey ? t(`sidebar.${o.statusKey}`) : o.status || '',
+        client: t(`nodes.clients.${o.client}`) !== `nodes.clients.${o.client}` 
+          ? t(`nodes.clients.${o.client}`) 
+          : o.client,
+      })),
+      opportunities: graphData.opportunities.map(op => ({
+        ...op,
+        name: t(`nodes.opportunities.${op.id}`) !== `nodes.opportunities.${op.id}` 
+          ? t(`nodes.opportunities.${op.id}`) 
+          : op.name,
+        client: t(`nodes.clients.${op.client}`) !== `nodes.clients.${op.client}` 
+          ? t(`nodes.clients.${op.client}`) 
+          : op.client,
+      })),
+    };
+  }, [locale, t, graphData]);
+  
+  // 初始化节点数据
+  const [simData, setSimData] = useState(NODES); 
+  const [chatInput, setChatInput] = useState('');
+  const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'ai'; text: string }>>(() => [
+    { role: 'ai', text: t('assistant.welcome') }
+  ]);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // 当语言改变时更新节点数据和聊天历史
+  useEffect(() => {
+    setSimData(NODES);
+    setChatHistory([{ role: 'ai', text: t('assistant.welcome') }]);
+  }, [locale, NODES, t]);
+  
+  // 使用数据服务生成的连线
+  const links = graphData.links;
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
+  // 处理模拟数据变更
+  const updateSimValue = (category, id, field, value) => {
+    setSimData(prev => ({
+      ...prev,
+      [category]: prev[category].map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  // 处理对话逻辑
+  const handleChat = () => {
+    if (!chatInput.trim()) return;
+    const userMsg: { role: 'user' | 'ai'; text: string } = { role: 'user', text: chatInput };
+    setChatHistory(prev => [...prev, userMsg]);
+    
+    // 模拟 AI 回复逻辑
+    let aiResponse = t('assistant.responses.analyzing');
+    const lowerInput = chatInput.toLowerCase();
+    
+    // 检测关键词（支持中英文）
+    const orderKeywords = locale === 'zh' 
+      ? ['订单', '状态', '运输', 'order', 'status', 'transit']
+      : ['order', 'status', 'transit', '订单', '状态', '运输'];
+    const stockKeywords = locale === 'zh'
+      ? ['优化', '库存', '物料', 'optimize', 'stock', 'material']
+      : ['optimize', 'stock', 'material', '优化', '库存', '物料'];
+    const riskKeywords = locale === 'zh'
+      ? ['模拟', '风险', '延迟', 'simulate', 'risk', 'delay']
+      : ['simulate', 'risk', 'delay', '模拟', '风险', '延迟'];
+    
+    if (orderKeywords.some(keyword => lowerInput.includes(keyword))) {
+      aiResponse = t('assistant.responses.orderQuery');
+    } else if (stockKeywords.some(keyword => lowerInput.includes(keyword))) {
+      aiResponse = t('assistant.responses.stockOptimization');
+    } else if (riskKeywords.some(keyword => lowerInput.includes(keyword))) {
+      aiResponse = t('assistant.responses.riskSimulation');
+      setSimulationMode(true);
+    }
+
+    setTimeout(() => {
+      setChatHistory(prev => [...prev, { role: 'ai', text: aiResponse }]);
+    }, 800);
+    setChatInput('');
+  };
+
+  // 获取当前选中节点数据
+  const getSelectedNodeData = () => {
+    for (const key in simData) {
+      const found = simData[key].find(n => n.id === selectedId);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const activeNode = getSelectedNodeData();
+
+  // 判断连线是否高亮
+  const isLinkActive = (from, to) => {
+    if (from === selectedId || to === selectedId) return true;
+    return false;
+  };
+
+  // 获取中文名称映射
+  const getNameById = (id) => {
+      for (const key in simData) {
+          const found = simData[key].find(n => n.id === id);
+          if (found) return found.name;
+      }
+      return id;
+  }
+
+  // 刷新图谱数据
+  const refreshGraphData = useCallback(() => {
+    const newGraphData = buildGraphData();
+    setGraphData(newGraphData);
+    const newNODES = {
+      suppliers: newGraphData.suppliers.map(s => ({
+        ...s,
+        name: t(`nodes.suppliers.${s.id}`) !== `nodes.suppliers.${s.id}` 
+          ? t(`nodes.suppliers.${s.id}`) 
+          : s.name,
+        status: s.statusKey ? t(`sidebar.${s.statusKey}`) : '',
+      })),
+      materials: newGraphData.materials.map(m => ({
+        ...m,
+        name: t(`nodes.materials.${m.id}`) !== `nodes.materials.${m.id}` 
+          ? t(`nodes.materials.${m.id}`) 
+          : m.name,
+      })),
+      products: newGraphData.products.map(p => ({
+        ...p,
+        name: t(`nodes.products.${p.id}`) !== `nodes.products.${p.id}` 
+          ? t(`nodes.products.${p.id}`) 
+          : p.name,
+      })),
+      orders: newGraphData.orders.map(o => ({
+        ...o,
+        name: t(`nodes.orders.${o.id}`) !== `nodes.orders.${o.id}` 
+          ? t(`nodes.orders.${o.id}`) 
+          : o.name,
+        status: o.statusKey ? t(`sidebar.${o.statusKey}`) : o.status || '',
+        client: t(`nodes.clients.${o.client}`) !== `nodes.clients.${o.client}` 
+          ? t(`nodes.clients.${o.client}`) 
+          : o.client,
+      })),
+      opportunities: newGraphData.opportunities.map(op => ({
+        ...op,
+        name: t(`nodes.opportunities.${op.id}`) !== `nodes.opportunities.${op.id}` 
+          ? t(`nodes.opportunities.${op.id}`) 
+          : op.name,
+        client: t(`nodes.clients.${op.client}`) !== `nodes.clients.${op.client}` 
+          ? t(`nodes.clients.${op.client}`) 
+          : op.client,
+      })),
+    };
+    setSimData(newNODES);
+  }, [locale, t]);
+
+  // 处理右键点击
+  const handleContextMenu = (e: React.MouseEvent, nodeId: string, nodeType: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      nodeId,
+      nodeType,
+    });
+    setSelectedId(nodeId);
+  };
+
+  // 关闭右键菜单
+  const closeContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  // 获取节点类型中文名称
+  const getNodeTypeName = (type: string) => {
+    const names: Record<string, string> = {
+      'SUPPLIER': locale === 'zh' ? '供应商' : 'Supplier',
+      'MATERIAL': locale === 'zh' ? '物料' : 'Material',
+      'PRODUCT': locale === 'zh' ? '产品' : 'Product',
+      'ORDER': locale === 'zh' ? '订单' : 'Order',
+      'OPPORTUNITY': locale === 'zh' ? '商机' : 'Opportunity',
+    };
+    return names[type] || type;
+  };
+
+  // 处理菜单项点击
+  const handleMenuAction = (action: 'edit' | 'delete' | 'add', nodeType?: string) => {
+    if (!contextMenu) return;
+    
+    const node = getSelectedNodeData();
+    
+    if (action === 'edit' && node) {
+      setEditMode(true);
+      setEditingNode({ ...node });
+      setContextMenu(null);
+    } else if (action === 'delete' && node) {
+      if (confirm(locale === 'zh' ? `确定要删除 ${node.name} 吗？` : `Are you sure you want to delete ${node.name}?`)) {
+        handleDeleteNode(node);
+        setContextMenu(null);
+      }
+    } else if (action === 'add') {
+      setShowAddForm(true);
+      setNewNodeType(nodeType as any);
+      setContextMenu(null);
+    }
+  };
+
+  // 保存节点
+  const handleSaveNode = (node: any) => {
+    if (node.type === 'PRODUCT') {
+      updateProduct(node.id, {
+        productName: node.name,
+        materialCodes: node.bom || [],
+      });
+    } else if (node.type === 'MATERIAL') {
+      updateMaterial(node.id, {
+        materialName: node.name,
+        applicableProductIds: node.applicableProductIds || [],
+      });
+    } else if (node.type === 'SUPPLIER') {
+      updateSupplier(node.id, node.name);
+    }
+    
+    // 刷新图谱数据
+    refreshGraphData();
+    setEditMode(false);
+    setEditingNode(null);
+  };
+
+  // 删除节点
+  const handleDeleteNode = (node: any) => {
+    if (node.type === 'PRODUCT') {
+      deleteProduct(node.id);
+    } else if (node.type === 'MATERIAL') {
+      deleteMaterial(node.id);
+    } else if (node.type === 'SUPPLIER') {
+      deleteSupplier(node.id);
+    }
+    
+    // 刷新图谱数据
+    refreshGraphData();
+    setSelectedId('');
+  };
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (contextMenu) {
+        setContextMenu(null);
+      }
+    };
+    
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => {
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [contextMenu]);
+
+  return (
+    <div className="flex h-[850px] w-full bg-[#0f1419] text-slate-300 font-sans overflow-hidden border border-slate-800 rounded-xl shadow-2xl relative">
+      
+      {/* 左侧: 主可视化区域 */}
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        
+        {/* 顶部导航栏 - 固定定位 */}
+        <div className="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-[#141a21] flex-shrink-0 z-50">
+          <div className="flex items-center space-x-3">
+            <div className="bg-blue-600 p-1.5 rounded text-white"><Activity size={18} /></div>
+            <h1 className="font-bold text-slate-100 tracking-wide text-lg">{t('header.title')} <span className="text-blue-500 text-sm font-normal">{t('header.subtitle')}</span></h1>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+             <div className={`flex items-center px-3 py-1 rounded-full border ${simulationMode ? 'border-purple-500 bg-purple-500/10 text-purple-400' : 'border-slate-700 bg-slate-800 text-slate-400'}`}>
+               <RefreshCw size={14} className={`mr-2 ${simulationMode ? 'animate-spin-slow' : ''}`} />
+               <span className="text-xs font-medium">{simulationMode ? t('header.simulationMode') : t('header.realtimeMode')}</span>
+             </div>
+             <button 
+              onClick={() => setSimulationMode(!simulationMode)}
+              className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-white transition border border-slate-600"
+             >
+               {simulationMode ? t('header.exitSimulation') : t('header.switchMode')}
+             </button>
+             {/* 语言切换按钮 */}
+             <button
+              onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
+              className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-white transition border border-slate-600 flex items-center gap-1.5"
+              title={t('language.switch')}
+             >
+              <Globe size={14} />
+              <span>{locale === 'zh' ? t('language.en') : t('language.zh')}</span>
+             </button>
+          </div>
+        </div>
+
+        {/* 图谱区域 - 可滚动 */}
+        <div className="flex-1 relative overflow-auto bg-[#0f1419]">
+          <svg className="w-full h-full absolute top-0 left-0">
+            <defs>
+              <marker id="arrow-active" markerWidth="10" markerHeight="10" refX="22" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#3B82F6" />
+              </marker>
+              <marker id="arrow-inactive" markerWidth="10" markerHeight="10" refX="22" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#334155" />
+              </marker>
+            </defs>
+
+            {/* 连线 */}
+            {links.map((link, i) => {
+              // 动态坐标映射 - 根据节点在数组中的位置计算
+              const getNodePos = (id: string) => {
+                // 查找节点在对应数组中的索引
+                const supplierIndex = simData.suppliers.findIndex(n => n.id === id);
+                if (supplierIndex !== -1) {
+                  return { x: 80, y: 200 + supplierIndex * 200 };
+                }
+                
+                const materialIndex = simData.materials.findIndex(n => n.id === id);
+                if (materialIndex !== -1) {
+                  return { x: 250, y: 150 + materialIndex * 150 };
+                }
+                
+                const productIndex = simData.products.findIndex(n => n.id === id);
+                if (productIndex !== -1) {
+                  return { x: 450, y: 150 + productIndex * 150 };
+                }
+                
+                const orderIndex = simData.orders.findIndex(n => n.id === id);
+                if (orderIndex !== -1) {
+                  return { x: 650, y: 200 + orderIndex * 150 };
+                }
+                
+                const oppIndex = simData.opportunities.findIndex(n => n.id === id);
+                if (oppIndex !== -1) {
+                  return { x: 850, y: 300 + oppIndex * 150 };
+                }
+                
+                return { x: 0, y: 0 };
+              };
+
+              const start = getNodePos(link.from);
+              const end = getNodePos(link.to);
+              const active = isLinkActive(link.from, link.to);
+
+              return (
+                <path 
+                  key={i}
+                  d={`M${start.x},${start.y} C${start.x + 80},${start.y} ${end.x - 80},${end.y} ${end.x},${end.y}`}
+                  stroke={active ? "#3B82F6" : "#1e293b"}
+                  strokeWidth={active ? 2 : 1}
+                  fill="none"
+                  markerEnd={active ? "url(#arrow-active)" : "url(#arrow-inactive)"}
+                />
+              );
+            })}
+
+            {/* 节点渲染 */}
+            {/* 供应商 */}
+            {simData.suppliers.map((n, i) => (
+              <g key={n.id} transform={`translate(80, ${200 + i * 200})`} onClick={() => setSelectedId(n.id)} onContextMenu={(e) => handleContextMenu(e, n.id, 'SUPPLIER')} className="cursor-pointer hover:opacity-80">
+                <circle r="25" fill="#1e293b" stroke={n.status === '风险' ? '#EF4444' : '#64748b'} strokeWidth="2" />
+                <foreignObject x="-8" y="-8" width="16" height="16">
+                  <div className="text-slate-400">
+                    <Users size={16} />
+                  </div>
+                </foreignObject>
+                <text x="-30" y="45" className="text-[10px] fill-slate-400 font-sans font-medium">{n.name}</text>
+                {(n as any).statusKey === 'risk' && <text x="15" y="-15" className="text-xs fill-red-500 font-bold">!</text>}
+              </g>
+            ))}
+
+            {/* 物料 */}
+            {simData.materials.map((n, i) => (
+              <g key={n.id} transform={`translate(250, ${150 + i * 150})`} onClick={() => setSelectedId(n.id)} onContextMenu={(e) => handleContextMenu(e, n.id, 'MATERIAL')} className="cursor-pointer hover:opacity-80">
+                <rect x="-20" y="-20" width="40" height="40" rx="4" fill="#1e293b" stroke={(n as any).stock < 200 ? '#F59E0B' : '#64748b'} strokeWidth="2" />
+                <foreignObject x="-8" y="-8" width="16" height="16">
+                  <div className="text-yellow-600">
+                    <Package size={16} />
+                  </div>
+                </foreignObject>
+                <text x="-30" y="35" className="text-[10px] fill-slate-400 font-sans font-medium">{n.name}</text>
+                <text x="-20" y="50" className="text-[9px] fill-slate-500">{(n as any).stock} {(n as any).unit || 'kg'}</text>
+              </g>
+            ))}
+
+            {/* 产品 */}
+            {simData.products.map((n, i) => (
+              <g key={n.id} transform={`translate(450, ${150 + i * 150})`} onClick={() => setSelectedId(n.id)} onContextMenu={(e) => handleContextMenu(e, n.id, 'PRODUCT')} className="cursor-pointer hover:opacity-80">
+                <polygon points="0,-25 22,12 -22,12" fill="#1e293b" stroke={selectedId === n.id ? '#3B82F6' : '#64748b'} strokeWidth="2" />
+                <foreignObject x="-7" y="-5" width="14" height="14">
+                  <div className="text-blue-400">
+                    <Factory size={14} />
+                  </div>
+                </foreignObject>
+                <text x="-30" y="30" className="text-[10px] fill-slate-400 font-sans font-medium">{n.name}</text>
+              </g>
+            ))}
+
+            {/* 订单 */}
+            {simData.orders.map((n, i) => (
+              <g key={n.id} transform={`translate(650, ${200 + i * 150})`} onClick={() => setSelectedId(n.id)} onContextMenu={(e) => handleContextMenu(e, n.id, 'ORDER')} className="cursor-pointer hover:opacity-80">
+                <rect x="-30" y="-15" width="60" height="30" rx="15" fill="#1e293b" stroke="#10B981" strokeWidth="2" />
+                <foreignObject x="-7" y="-7" width="14" height="14">
+                  <div className="text-green-500">
+                    <Truck size={14} />
+                  </div>
+                </foreignObject>
+                <text x="-25" y="30" className="text-[10px] fill-slate-400 font-sans font-medium">{n.client}</text>
+              </g>
+            ))}
+
+            {/* 商机 */}
+            {simData.opportunities.map((n, i) => (
+              <g key={n.id} transform={`translate(850, 300)`} onClick={() => setSelectedId(n.id)} onContextMenu={(e) => handleContextMenu(e, n.id, 'OPPORTUNITY')} className="cursor-pointer hover:opacity-80">
+                <circle r="30" fill="#1e293b" stroke="#8B5CF6" strokeWidth="2" strokeDasharray="4,2" />
+                <foreignObject x="-9" y="-9" width="18" height="18">
+                  <div className="text-purple-500">
+                    <DollarSign size={18} />
+                  </div>
+                </foreignObject>
+                <text x="-35" y="50" className="text-[10px] fill-slate-400 font-sans font-medium">{n.name}</text>
+              </g>
+            ))}
+
+          </svg>
+          
+          {/* 右键菜单 */}
+          {contextMenu?.visible && (
+            <div
+              className="fixed bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 min-w-[160px]"
+              style={{
+                left: `${contextMenu.x}px`,
+                top: `${contextMenu.y}px`,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="py-1">
+                <button
+                  onClick={() => handleMenuAction('add', contextMenu.nodeType)}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <Plus size={14} />
+                  <span>{locale === 'zh' ? '新增' : 'Add'} {getNodeTypeName(contextMenu.nodeType)}</span>
+                </button>
+                <button
+                  onClick={() => handleMenuAction('edit')}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <Edit size={14} />
+                  <span>{locale === 'zh' ? '修改' : 'Edit'}</span>
+                </button>
+                <button
+                  onClick={() => handleMenuAction('delete')}
+                  className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <Trash2 size={14} />
+                  <span>{locale === 'zh' ? '删除' : 'Delete'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* 图例 */}
+          <div className="absolute bottom-4 left-4 bg-slate-900/80 p-3 rounded border border-slate-800 text-xs text-slate-400 shadow-lg">
+             <div className="flex items-center gap-2 mb-2"><div className="w-2 h-2 rounded-full bg-slate-600"></div> {t('legend.supplier')}</div>
+             <div className="flex items-center gap-2 mb-2"><div className="w-2 h-2 bg-yellow-600 rounded-sm"></div> {t('legend.material')}</div>
+             <div className="flex items-center gap-2 mb-2"><div className="w-2 h-2 border-b-4 border-transparent border-l-4 border-l-transparent border-r-4 border-r-transparent border-b-blue-500"></div> {t('legend.product')}</div>
+             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full border border-green-500"></div> {t('legend.order')}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 收缩/展开按钮 - 放在外层，确保始终可见 */}
+      <button
+        onClick={() => setSidebarExpanded(!sidebarExpanded)}
+        className={`absolute ${sidebarExpanded ? 'right-[400px]' : 'right-[-1px]'} top-1/2 z-20 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-l-lg p-2 text-slate-400 hover:text-white transition-all duration-300 shadow-lg`}
+        style={{ transform: 'translateY(-50%)' }}
+        title={sidebarExpanded ? '收缩面板' : '展开面板'}
+      >
+        {sidebarExpanded ? (
+          <ChevronRight size={16} />
+        ) : (
+          <ChevronLeft size={16} />
+        )}
+      </button>
+
+      {/* 右侧: 控制塔面板 - 可收缩 */}
+      <div className={`${sidebarExpanded ? 'w-[400px]' : 'w-0'} border-l border-slate-800 bg-[#141a21] flex flex-col transition-all duration-300 overflow-hidden relative`}>
+
+        {sidebarExpanded && (
+          <>
+            {/* 1. 对象详情区域 - 固定在顶部 */}
+            <div className="p-5 border-b border-slate-800 flex-shrink-0 bg-[#141a21]">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <div className="text-xs font-bold text-blue-500 mb-1 tracking-wider">{t('sidebar.selectedObject')}</div>
+              <h2 className="text-xl font-bold text-white">{activeNode?.name || t('sidebar.selectObject')}</h2>
+              <div className="text-xs text-slate-500 font-mono mt-1">ID: {activeNode?.id.toUpperCase()}</div>
+            </div>
+            <div className="bg-slate-800 p-2 rounded text-slate-400">
+              {activeNode?.type === 'PRODUCT' && <Factory size={20} />}
+              {activeNode?.type === 'MATERIAL' && <Package size={20} />}
+              {activeNode?.type === 'SUPPLIER' && <Users size={20} />}
+              {activeNode?.type === 'ORDER' && <Truck size={20} />}
+              {activeNode?.type === 'OPPORTUNITY' && <DollarSign size={20} />}
+            </div>
+          </div>
+
+          {/* 编辑表单 */}
+          {editMode && editingNode && (
+            <div className="mb-4 p-4 bg-slate-900 rounded border border-blue-500">
+              {editingNode.type === 'PRODUCT' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">{locale === 'zh' ? '产品名称' : 'Product Name'}</label>
+                    <input
+                      type="text"
+                      value={editingNode.name}
+                      onChange={(e) => setEditingNode({ ...editingNode, name: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">{locale === 'zh' ? '物料编码 (BOM)' : 'Material Codes (BOM)'}</label>
+                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                      {materialsData.map(m => (
+                        <label key={m.materialCode} className="flex items-center gap-1 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={(editingNode.bom || []).includes(m.materialCode)}
+                            onChange={(e) => {
+                              const bom = editingNode.bom || [];
+                              if (e.target.checked) {
+                                setEditingNode({ ...editingNode, bom: [...bom, m.materialCode] });
+                              } else {
+                                setEditingNode({ ...editingNode, bom: bom.filter((id: string) => id !== m.materialCode) });
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-slate-300">{m.materialName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveNode(editingNode)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 px-3 py-2 rounded text-sm text-white"
+                    >
+                      {locale === 'zh' ? '保存' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditMode(false);
+                        setEditingNode(null);
+                      }}
+                      className="flex-1 bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded text-sm text-white"
+                    >
+                      {locale === 'zh' ? '取消' : 'Cancel'}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {editingNode.type === 'MATERIAL' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">{locale === 'zh' ? '物料名称' : 'Material Name'}</label>
+                    <input
+                      type="text"
+                      value={editingNode.name}
+                      onChange={(e) => setEditingNode({ ...editingNode, name: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">{locale === 'zh' ? '适用产品' : 'Applicable Products'}</label>
+                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                      {productsData.map(p => (
+                        <label key={p.productId} className="flex items-center gap-1 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={(editingNode.applicableProductIds || []).includes(p.productId)}
+                            onChange={(e) => {
+                              const ids = editingNode.applicableProductIds || [];
+                              if (e.target.checked) {
+                                setEditingNode({ ...editingNode, applicableProductIds: [...ids, p.productId] });
+                              } else {
+                                setEditingNode({ ...editingNode, applicableProductIds: ids.filter((id: string) => id !== p.productId) });
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-slate-300">{p.productName}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveNode(editingNode)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 px-3 py-2 rounded text-sm text-white"
+                    >
+                      {locale === 'zh' ? '保存' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditMode(false);
+                        setEditingNode(null);
+                      }}
+                      className="flex-1 bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded text-sm text-white"
+                    >
+                      {locale === 'zh' ? '取消' : 'Cancel'}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {editingNode.type === 'SUPPLIER' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">{locale === 'zh' ? '供应商名称' : 'Supplier Name'}</label>
+                    <input
+                      type="text"
+                      value={editingNode.name}
+                      onChange={(e) => setEditingNode({ ...editingNode, name: e.target.value })}
+                      className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-white"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveNode(editingNode)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 px-3 py-2 rounded text-sm text-white"
+                    >
+                      {locale === 'zh' ? '保存' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditMode(false);
+                        setEditingNode(null);
+                      }}
+                      className="flex-1 bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded text-sm text-white"
+                    >
+                      {locale === 'zh' ? '取消' : 'Cancel'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 动态属性面板 */}
+          {!editMode && (
+            <div className="space-y-3 bg-[#0f1419] p-4 rounded border border-slate-800">
+            {activeNode?.type === 'PRODUCT' && (
+              <>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.bomStructure')}:</span> <span className="text-slate-200">{((activeNode as any).bom || []).map((id: string) => getNameById(id)).join(' + ')}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.dailyCapacity')}:</span> <span className="text-slate-200">500 {t('sidebar.units')}</span></div>
+              </>
+            )}
+            {activeNode?.type === 'MATERIAL' && (
+              <>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.currentStock')}:</span> <span className={(activeNode as any).stock < 200 ? "text-red-400 font-bold" : "text-slate-200"}>{(activeNode as any).stock} {(activeNode as any).unit || 'kg'}</span></div>
+                {simulationMode && (
+                  <div className="mt-3 pt-3 border-t border-slate-700">
+                    <label className="text-xs text-purple-400 mb-2 block flex items-center"><Settings size={12} className="mr-1"/> {t('sidebar.simulateStock')}</label>
+                    <input type="range" min="0" max="2000" className="w-full accent-purple-500 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer" 
+                      value={(activeNode as any).stock || 0} 
+                      onChange={(e) => updateSimValue('materials', activeNode.id, 'stock', parseInt(e.target.value))} 
+                    />
+                    <div className="flex justify-between text-xs text-slate-500 mt-1">
+                      <span>0</span>
+                      <span>2000</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {activeNode?.type === 'ORDER' && (
+              <>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.clientName')}:</span> <span className="text-slate-200">{(activeNode as any).client}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.deliveryDue')}:</span> <span className="text-slate-200">{(activeNode as any).due}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.currentStatus')}:</span> <span className="text-green-400 border border-green-900 bg-green-900/20 px-1.5 py-0.5 rounded text-xs">{(activeNode as any).status}</span></div>
+              </>
+            )}
+            {activeNode?.type === 'OPPORTUNITY' && (
+              <>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.potentialRevenue')}:</span> <span className="text-slate-200">¥ 1,200,000</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.winProbability')}:</span> <span className="text-slate-200">{(activeNode as any).prob}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.estimatedOrder')}:</span> <span className="text-slate-200">{(activeNode as any).estDate}</span></div>
+              </>
+            )}
+            {activeNode?.type === 'SUPPLIER' && (
+              <>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.healthStatus')}:</span> <span className={(activeNode as any).statusKey === 'risk' ? "text-red-400" : "text-green-400"}>{activeNode.status}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500">{t('sidebar.avgDelay')}:</span> <span className="text-slate-200">{(activeNode as any).delay || 0} {t('sidebar.days')}</span></div>
+              </>
+            )}
+            </div>
+          )}
+        </div>
+
+        {/* 2. AIP 智能助手区域 - 可滚动 */}
+        <div className="flex-1 flex flex-col bg-[#141a21] overflow-hidden">
+          <div className="p-3 border-b border-slate-800 flex items-center space-x-2 flex-shrink-0">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <span className="text-xs font-bold text-slate-300">{t('assistant.title')}</span>
+          </div>
+          
+          {/* 聊天记录 - 可滚动 */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {chatHistory.map((msg, idx) => (
+              <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[90%] p-3 rounded-lg text-xs leading-relaxed shadow-sm ${
+                  msg.role === 'user' 
+                    ? 'bg-blue-600 text-white rounded-br-none' 
+                    : 'bg-slate-800 text-slate-300 border border-slate-700 rounded-bl-none'
+                }`}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* 输入区域 */}
+          <div className="p-4 border-t border-slate-800">
+            <div className="relative">
+              <input 
+                type="text" 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleChat()}
+                placeholder={t('assistant.placeholder')}
+                className="w-full bg-[#0f1419] border border-slate-700 rounded pl-3 pr-10 py-3 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition-colors placeholder-slate-600"
+              />
+              <button 
+                onClick={handleChat}
+                className="absolute right-2 top-2.5 text-slate-500 hover:text-blue-400"
+              >
+                <ArrowRight size={16} />
+              </button>
+            </div>
+            <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button onClick={() => setChatInput(locale === 'zh' ? "查询订单-101的状态" : "Query order-101 status")} className="whitespace-nowrap px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-400 border border-slate-700 transition">{t('assistant.quickActions.queryOrder')}</button>
+              <button onClick={() => setChatInput(locale === 'zh' ? "分析物料 C 的库存优化方向" : "Analyze material C stock optimization")} className="whitespace-nowrap px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-400 border border-slate-700 transition">{t('assistant.quickActions.optimizeStock')}</button>
+              <button onClick={() => setChatInput(locale === 'zh' ? "模拟供应商 B 延迟风险" : "Simulate supplier B delay risk")} className="whitespace-nowrap px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-400 border border-slate-700 transition">{t('assistant.quickActions.simulateRisk')}</button>
+            </div>
+          </div>
+        </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SupplyChainApp;
+
