@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(netstat:*)",
+      "Bash(npm run dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(python -c:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(del \"C:\\program_demo\\chain-neural\\ontology_import_openapi_v2_formatted.json\")",
+      "Bash(cat:*)",
+      "Bash(python:*)",
+      "Bash(copy:*)",
+      "Bash(cp:*)",
+      "WebFetch(domain:www.palantir.com)",
+      "Bash(ls:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(uvicorn:*)",
+      "Bash(del \"C:\\\\program_demo\\\\chain-neural\\\\frontend\\\\src\\\\components\\\\views\\\\DataAnalyticsPanel.tsx\")",
+      "Bash(for pid in P0001 P0002 P0003)",
+      "Bash(do echo -e \"\\\\n$pid:\")",
+      "Bash(done)",
+      "Bash(npm run lint)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
