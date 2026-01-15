@@ -245,7 +245,7 @@ const MaterialInventoryPanel = ({ onNavigate }: Props) => {
               <div>
                 <p className="text-2xl font-bold text-red-600">Error</p>
                 <p className="text-xs text-red-500 mt-1">
-                  {(mode === 'api' ? totalMaterialStockError : materialStockRankingError)?.message || '加载失败'}
+                  {(mode === 'api' ? totalMaterialStockError : materialStockRankingError) || '加载失败'}
                 </p>
               </div>
             ) : (
@@ -291,7 +291,7 @@ const MaterialInventoryPanel = ({ onNavigate }: Props) => {
             ) : stagnantMaterialError ? (
               // 错误时显示错误信息
               <div className="text-sm text-red-500 p-2 bg-red-50 rounded">
-                加载失败: {stagnantMaterialError.message || '未知错误'}
+                加载失败: {stagnantMaterialError || '未知错误'}
               </div>
             ) : stagnantMaterials.length > 0 ? (
               // 使用真实 API 数据
@@ -323,7 +323,7 @@ const MaterialInventoryPanel = ({ onNavigate }: Props) => {
               </div>
             ) : materialStockRankingError ? (
               <div className="text-sm text-red-500 p-2 bg-red-50 rounded">
-                数据加载失败: {materialStockRankingError.message || '未知错误'}
+                数据加载失败: {materialStockRankingError || '未知错误'}
               </div>
             ) : top10MaterialStockItems.length > 0 ? (
               // 使用真实 API 数据

@@ -9,6 +9,45 @@ import { metricModelApi, createCurrentYearRange, createLastDaysRange } from '../
 import type { MetricQueryResult, MetricQueryRequest } from '../api';
 
 // ============================================================================
+// 全局请求缓存 - 防止重复请求
+// ============================================================================
+
+/** 请求缓存项 */
+interface RequestCacheItem {
+  /** 正在进行的请求 Promise */
+  promise: Promise<MetricQueryResult>;
+  /** 缓存时间戳 */
+  timestamp: number;
+}
+
+/** 全局请求缓存 Map */
+const requestCache = new Map<string, RequestCacheItem>();
+
+/** 缓存有效期 (毫秒) */
+const CACHE_TTL = 5000; // 5秒内的重复请求使用缓存
+
+/**
+ * 清理过期的缓存
+ */
+function cleanExpiredCache(): void {
+  const now = Date.now();
+  const keysToDelete: string[] = [];
+
+  requestCache.forEach((item, key) => {
+    if (now - item.timestamp > CACHE_TTL) {
+      keysToDelete.push(key);
+    }
+  });
+
+  keysToDelete.forEach(key => requestCache.delete(key));
+}
+
+// 定期清理过期缓存 (每10秒)
+if (typeof window !== 'undefined') {
+  setInterval(cleanExpiredCache, 10000);
+}
+
+// ============================================================================
 // 类型定义
 // ============================================================================
 
@@ -194,21 +233,64 @@ export function useMetricData(
   const transformRef = useRef(transform);
   transformRef.current = transform;
 
+  // 使用 ref 存储 AbortController，用于取消请求
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
   const fetchData = useCallback(async () => {
     if (!modelId) {
       setError('指标模型 ID 不能为空');
       return;
     }
 
+    // 取消之前的请求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      console.log(`[useMetricData] Aborted previous request for ${modelId}`);
+    }
+
+    // 创建新的 AbortController
+    abortControllerRef.current = new AbortController();
+    const currentController = abortControllerRef.current;
+
+    // 默认时间范围：最近1天（避免长跨度查询导致500错误）
+    const defaultRange = createLastDaysRange(1);
+    const queryStart = start ?? defaultRange.start;
+    const queryEnd = end ?? defaultRange.end;
+
+    // 生成缓存键 (基于请求参数)
+    const cacheKey = `${modelId}-${instant}-${queryStart}-${queryEnd}-${step}`;
+    const now = Date.now();
+
+    // 检查缓存中是否有相同的请求
+    const cached = requestCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < CACHE_TTL) {
+      console.log(`[useMetricData] Using cached request for ${modelId}`);
+      try {
+        const result = await cached.promise;
+
+        // 检查请求是否已被取消或组件已卸载
+        if (currentController.signal.aborted || !isMountedRef.current) {
+          console.log(`[useMetricData] Request cancelled for ${modelId}`);
+          return;
+        }
+
+        setRawData(result);
+        const transformedValue = transformRef.current(result);
+        setValue(transformedValue);
+        setLoading(false);
+        return;
+      } catch (err) {
+        // 缓存的请求失败了,清除缓存并继续执行新请求
+        console.warn(`[useMetricData] Cached request failed for ${modelId}, retrying...`);
+        requestCache.delete(cacheKey);
+      }
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      // 默认时间范围：最近1天（避免长跨度查询导致500错误）
-      const defaultRange = createLastDaysRange(1);
-      const queryStart = start ?? defaultRange.start;
-      const queryEnd = end ?? defaultRange.end;
-
       const request: MetricQueryRequest = {
         instant,
         start: queryStart,
@@ -220,27 +302,70 @@ export function useMetricData(
         request.step = step;
       }
 
-      const result = await metricModelApi.queryByModelId(modelId, request, {
+      // 创建新请求
+      const requestPromise = metricModelApi.queryByModelId(modelId, request, {
         includeModel: true,
       });
+
+      // 将请求存入缓存
+      requestCache.set(cacheKey, {
+        promise: requestPromise,
+        timestamp: now
+      });
+
+      console.log(`[useMetricData] Fetching metric ${modelId} (cached: ${cacheKey})`);
+
+      const result = await requestPromise;
+
+      // 检查请求是否已被取消或组件已卸载
+      if (currentController.signal.aborted || !isMountedRef.current) {
+        console.log(`[useMetricData] Request cancelled for ${modelId}`);
+        return;
+      }
 
       setRawData(result);
       const transformedValue = transformRef.current(result);
       setValue(transformedValue);
     } catch (err) {
+      // 忽略 AbortError
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log(`[useMetricData] Request aborted for ${modelId}`);
+        return;
+      }
+
+      // 检查组件是否已卸载
+      if (!isMountedRef.current) {
+        return;
+      }
+
       const errorMessage = err instanceof Error ? err.message : '获取指标数据失败';
       setError(errorMessage);
       console.error(`[useMetricData] 获取指标 ${modelId} 失败:`, err);
+      // 请求失败时从缓存中移除
+      requestCache.delete(cacheKey);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [modelId, instant, start, end, step]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (immediate) {
       fetchData();
     }
-  }, [immediate, fetchData]);
+
+    // 清理函数：取消未完成的请求
+    return () => {
+      isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        console.log(`[useMetricData] Cleanup: aborted request for ${modelId}`);
+      }
+    };
+  }, [immediate, fetchData, modelId]);
 
   return {
     value,
@@ -367,11 +492,25 @@ export function useDimensionMetricData(
   // 将 dimensions 数组序列化为字符串，避免引用变化导致的无限循环
   const dimensionsKey = JSON.stringify(dimensions);
 
+  // 使用 ref 存储 AbortController，用于取消请求
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
   const fetchData = useCallback(async () => {
     if (!modelId) {
       setError('指标模型 ID 不能为空');
       return;
     }
+
+    // 取消之前的请求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      console.log(`[useDimensionMetricData] Aborted previous request for ${modelId}`);
+    }
+
+    // 创建新的 AbortController
+    abortControllerRef.current = new AbortController();
+    const currentController = abortControllerRef.current;
 
     setLoading(true);
     setError(null);
@@ -395,9 +534,81 @@ export function useDimensionMetricData(
         request.step = step;
       }
 
-      const result = await metricModelApi.queryByModelId(modelId, request, {
+      // 生成缓存键 (基于请求参数)
+      const cacheKey = `${modelId}-${instant}-${queryStart}-${queryEnd}-${step}-${dimensionsKey}`;
+      const now = Date.now();
+
+      // 检查缓存中是否有相同的请求
+      const cached = requestCache.get(cacheKey);
+      if (cached && (now - cached.timestamp) < CACHE_TTL) {
+        console.log(`[useDimensionMetricData] Using cached request for ${modelId}`);
+        try {
+          const result = await cached.promise;
+
+          // 检查请求是否已被取消或组件已卸载
+          if (currentController.signal.aborted || !isMountedRef.current) {
+            console.log(`[useDimensionMetricData] Request cancelled for ${modelId}`);
+            return;
+          }
+
+          setRawData(result);
+
+          // 转换数据：提取每个系列的标签和最新值
+          const transformedItems: DimensionDataItem[] = [];
+
+          if (result.datas && result.datas.length > 0) {
+            for (const series of result.datas) {
+              // 获取最新的值（最后一个非空值）
+              let latestValue: number | null = null;
+              if (series.values && series.values.length > 0) {
+                for (let i = series.values.length - 1; i >= 0; i--) {
+                  if (series.values[i] !== null) {
+                    latestValue = series.values[i];
+                    break;
+                  }
+                }
+              }
+
+              transformedItems.push({
+                labels: series.labels || {},
+                value: latestValue,
+              });
+            }
+          }
+
+          // 按值降序排序
+          transformedItems.sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+
+          setItems(transformedItems);
+          setLoading(false);
+          return;
+        } catch (err) {
+          // 缓存的请求失败了,清除缓存并继续执行新请求
+          console.warn(`[useDimensionMetricData] Cached request failed for ${modelId}, retrying...`);
+          requestCache.delete(cacheKey);
+        }
+      }
+
+      // 创建新请求
+      const requestPromise = metricModelApi.queryByModelId(modelId, request, {
         includeModel: true,
       });
+
+      // 将请求存入缓存
+      requestCache.set(cacheKey, {
+        promise: requestPromise,
+        timestamp: now
+      });
+
+      console.log(`[useDimensionMetricData] Fetching metric ${modelId} (cached: ${cacheKey})`);
+
+      const result = await requestPromise;
+
+      // 检查请求是否已被取消或组件已卸载
+      if (currentController.signal.aborted || !isMountedRef.current) {
+        console.log(`[useDimensionMetricData] Request cancelled for ${modelId}`);
+        return;
+      }
 
       setRawData(result);
 
@@ -429,20 +640,47 @@ export function useDimensionMetricData(
 
       setItems(transformedItems);
     } catch (err) {
+      // 忽略 AbortError
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log(`[useDimensionMetricData] Request aborted for ${modelId}`);
+        return;
+      }
+
+      // 检查组件是否已卸载
+      if (!isMountedRef.current) {
+        return;
+      }
+
       const errorMessage = err instanceof Error ? err.message : '获取指标数据失败';
       setError(errorMessage);
       console.error(`[useDimensionMetricData] 获取指标 ${modelId} 失败:`, err);
+      // 请求失败时从缓存中移除
+      const cacheKey = `${modelId}-${instant}-${start ?? createLastDaysRange(1).start}-${end ?? createLastDaysRange(1).end}-${step}-${dimensionsKey}`;
+      requestCache.delete(cacheKey);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelId, dimensionsKey, instant, start, end, step]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (immediate) {
       fetchData();
     }
-  }, [immediate, fetchData]);
+
+    // 清理函数:取消未完成的请求
+    return () => {
+      isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        console.log(`[useDimensionMetricData] Cleanup: aborted request for ${modelId}`);
+      }
+    };
+  }, [immediate, fetchData, modelId]);
 
   return {
     items,

@@ -23,15 +23,19 @@ const ProductInventoryAgent = ({ onNavigate }: Props) => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        // 创建 AbortController 用于取消请求
+        const abortController = new AbortController();
+        let isMounted = true;
+
         async function fetchData() {
             try {
                 setLoading(true);
                 setError(null);
 
                 console.log('[Product Inventory Agent] Fetching from API...');
-                
+
                 const timeRange = createLastDaysRange(1);
-                
+
                 const result = await metricModelApi.queryByModelId(
                     PRODUCT_INVENTORY_MODEL_ID,
                     {
@@ -43,20 +47,26 @@ const ProductInventoryAgent = ({ onNavigate }: Props) => {
                     { includeModel: true }
                 );
 
+                // 检查组件是否已卸载
+                if (!isMounted || abortController.signal.aborted) {
+                    console.log('[Product Inventory Agent] Request cancelled');
+                    return;
+                }
+
                 // 转换 API 数据为组件期望的格式
                 const transformedData: ProductInventoryResult[] = [];
-                
+
                 if (result.datas && result.datas.length > 0) {
                     for (const series of result.datas) {
                         const materialCode = series.labels?.material_code || '';
                         const materialName = series.labels?.material_name || '';
                         // 获取 available_quantity
                         let availableQuantity = 0;
-                        
+
                         // 优先从 labels 中获取（如果作为维度传递）
                         if (series.labels?.available_quantity) {
                             availableQuantity = parseFloat(series.labels.available_quantity) || 0;
-                        } 
+                        }
                         // 其次从 values 中获取最新值（如果作为度量值）
                         else if (series.values && series.values.length > 0) {
                             for (let i = series.values.length - 1; i >= 0; i--) {
@@ -79,17 +89,42 @@ const ProductInventoryAgent = ({ onNavigate }: Props) => {
                 // 按库存量降序排序
                 transformedData.sort((a, b) => b.calculatedStock - a.calculatedStock);
 
+                // 再次检查组件是否已卸载
+                if (!isMounted) {
+                    return;
+                }
+
                 setProducts(transformedData);
                 console.log('[Product Inventory Agent] Data fetched:', transformedData);
             } catch (err) {
+                // 忽略 AbortError
+                if (err instanceof Error && err.name === 'AbortError') {
+                    console.log('[Product Inventory Agent] Request aborted');
+                    return;
+                }
+
+                // 检查组件是否已卸载
+                if (!isMounted) {
+                    return;
+                }
+
                 console.error('[Product Inventory Agent] API call failed:', err);
                 setError(err instanceof Error ? err.message : '获取数据失败');
             } finally {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             }
         }
 
         fetchData();
+
+        // 清理函数：取消未完成的请求
+        return () => {
+            isMounted = false;
+            abortController.abort();
+            console.log('[Product Inventory Agent] Cleanup: aborted request');
+        };
     }, []);
 
     // 计算总库存

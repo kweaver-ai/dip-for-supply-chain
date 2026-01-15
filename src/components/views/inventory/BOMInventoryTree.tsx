@@ -298,12 +298,17 @@ export const BOMInventoryTree: React.FC<BOMInventoryTreeProps> = ({ onClose }) =
         return bomTrees.find(t => t.productCode === selectedProduct);
     }, [bomTrees, selectedProduct]);
 
-    // 切换产品时展开根节点
+    // 切换产品时展开根节点，并退出全局模式
     const handleSelectProduct = (productCode: string) => {
         setSelectedProduct(productCode);
         const tree = bomTrees.find(t => t.productCode === productCode);
         if (tree) {
             setExpandedNodes(new Set([tree.rootNode.code]));
+        }
+
+        // 如果当前在全局模式，切换回BOM分析模式
+        if (activeTab === 'global') {
+            setActiveTab('bom');
         }
     };
 
@@ -359,9 +364,9 @@ export const BOMInventoryTree: React.FC<BOMInventoryTreeProps> = ({ onClose }) =
     }, [selectedProduct, currentTree, activeTab]);
 
     return (
-        <div className="flex flex-col h-full max-h-[85vh]">
+        <div className="flex flex-col h-full">
             {/* 标题栏 */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+            <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-purple-50">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                         <Layers className="text-white" size={20} />
@@ -381,85 +386,115 @@ export const BOMInventoryTree: React.FC<BOMInventoryTreeProps> = ({ onClose }) =
                 </button>
             </div>
 
-            {/* 产品选择 Tab */}
-            <div className="flex items-center gap-2 px-6 py-3 border-b border-slate-200 bg-white">
-                {TARGET_PRODUCTS.map(code => {
-                    const tree = bomTrees.find(t => t.productCode === code);
-                    const isSelected = selectedProduct === code;
 
-                    return (
+            {/* 产品选择 Tab - 只在非全局模式显示 */}
+            {activeTab !== 'global' && (
+                <div className="flex-shrink-0 flex items-center gap-2 px-6 py-3 border-b border-slate-200 bg-white">
+                    {TARGET_PRODUCTS.map(code => {
+                        const tree = bomTrees.find(t => t.productCode === code);
+                        const isSelected = selectedProduct === code;
+
+                        return (
+                            <button
+                                key={code}
+                                onClick={() => handleSelectProduct(code)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isSelected
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                    }`}
+                            >
+                                <div className="flex flex-col items-start">
+                                    <span>{code}</span>
+                                    {tree && (
+                                        <span className={`text-xs ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                            {tree.totalMaterials} 物料
+                                        </span>
+                                    )}
+                                </div>
+                            </button>
+                        );
+                    })}
+
+                    {/* 全局组合优化按钮 - 放在最右边 */}
+                    <button
+                        onClick={() => handleTabChange('global')}
+                        className={`ml-auto px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200`}
+                    >
+                        <Globe size={16} />
+                        全局组合优化
+                    </button>
+                </div>
+            )}
+
+            {/* 全局模式标题栏 */}
+            {activeTab === 'global' && (
+                <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-amber-50">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                            <Globe className="text-white" size={20} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-slate-800">全局组合优化</h3>
+                            <p className="text-sm text-amber-700">跨产品库存优化分析</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setActiveTab('bom')}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-white border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        返回单品分析
+                    </button>
+                </div>
+            )}
+
+            {/* 功能切换 Tabs - 只在非全局模式下显示 */}
+            {activeTab !== 'global' && (
+                <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-200 bg-white px-6">
+                    <div className="flex">
                         <button
-                            key={code}
-                            onClick={() => handleSelectProduct(code)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isSelected
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            onClick={() => handleTabChange('bom')}
+                            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'bom'
+                                ? 'border-indigo-600 text-indigo-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
                                 }`}
                         >
-                            <div className="flex flex-col items-start">
-                                <span>{code}</span>
-                                {tree && (
-                                    <span className={`text-xs ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
-                                        {tree.totalMaterials} 物料
-                                    </span>
-                                )}
-                            </div>
-                        </button>
-                    );
-                })}
-
-                {/* 操作按钮 - 只在BOM模式显示 */}
-                {activeTab === 'bom' && (
-                    <div className="ml-auto flex items-center gap-2">
-                        <button
-                            onClick={handleExpandAll}
-                            className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded hover:bg-slate-200 transition-colors"
-                        >
-                            展开全部
+                            <Layers size={16} />
+                            BOM库存分析
                         </button>
                         <button
-                            onClick={handleCollapseAll}
-                            className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded hover:bg-slate-200 transition-colors"
+                            onClick={() => handleTabChange('analysis')}
+                            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'analysis'
+                                ? 'border-indigo-600 text-indigo-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                                }`}
                         >
-                            折叠全部
+                            <BarChart3 size={16} />
+                            生产数量分析
                         </button>
                     </div>
-                )}
-            </div>
 
-            {/* 功能切换 Tabs */}
-            <div className="flex border-b border-slate-200 bg-white px-6">
-                <button
-                    onClick={() => handleTabChange('bom')}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'bom'
-                            ? 'border-indigo-600 text-indigo-600'
-                            : 'border-transparent text-slate-500 hover:text-slate-700'
-                        }`}
-                >
-                    <Layers size={16} />
-                    BOM库存分析
-                </button>
-                <button
-                    onClick={() => handleTabChange('analysis')}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'analysis'
-                            ? 'border-indigo-600 text-indigo-600'
-                            : 'border-transparent text-slate-500 hover:text-slate-700'
-                        }`}
-                >
-                    <BarChart3 size={16} />
-                    生产数量分析
-                </button>
-                <button
-                    onClick={() => handleTabChange('global')}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'global'
-                            ? 'border-amber-600 text-amber-600'
-                            : 'border-transparent text-slate-500 hover:text-slate-700'
-                        }`}
-                >
-                    <Globe size={16} />
-                    全局组合优化
-                </button>
-            </div>
+                    {/* 展开/折叠按钮 - 只在BOM模式显示 */}
+                    {activeTab === 'bom' && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleExpandAll}
+                                className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded hover:bg-slate-200 transition-colors"
+                            >
+                                展开全部
+                            </button>
+                            <button
+                                onClick={handleCollapseAll}
+                                className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded hover:bg-slate-200 transition-colors"
+                            >
+                                折叠全部
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {activeTab === 'global' ? (
                 <div className="flex-1 overflow-auto bg-slate-50">
