@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, User, X, Send, Zap, Loader2, Square } from 'lucide-react';
+import { Bot, User, X, Send, Zap, Loader2, Square, PlusCircle } from 'lucide-react';
 import type { CopilotRichContent, StreamMessage } from '../../types/ontology';
 import { Streamdown } from 'streamdown';
 
@@ -22,6 +22,11 @@ export interface CopilotSidebarProps {
   topOffset?: number;
   conversationId?: string;
   onCancel?: () => void;
+  // New props for state sync
+  onConversationCreated?: (id: string) => void;
+  onMessagesSaved?: (messages: CopilotMessage[]) => void;
+  savedMessages?: CopilotMessage[];
+  onNewConversation?: () => void;
 }
 
 export const CopilotSidebar = ({
@@ -33,23 +38,63 @@ export const CopilotSidebar = ({
   onQuery,
   topOffset = 0,
   conversationId: initialConversationId,
-  onCancel
+  onCancel,
+  onConversationCreated,
+  onMessagesSaved,
+  savedMessages,
+  onNewConversation
 }: CopilotSidebarProps) => {
+  // Initialize with savedMessages if available (and valid), otherwise use initialMessages
+  // We use a function to initialize state lazily, but here we need to be careful about prop updates
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<CopilotMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<CopilotMessage[]>(
+    (savedMessages && savedMessages.length > 0) ? savedMessages : initialMessages
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(initialConversationId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Reset messages when initialMessages prop changes (page switch)
+  // Sync messages UP to parent whenever they change locally
   useEffect(() => {
-    setMessages(initialMessages);
+    if (onMessagesSaved) {
+      onMessagesSaved(messages);
+    }
+  }, [messages, onMessagesSaved]);
+
+  // Handle View Changes (Context Switch):
+  // When initialMessages changes (signaling a view change), we reset/reload state.
+  // We prioritize savedMessages (if the parent has preserved them for this view) over initialMessages.
+  useEffect(() => {
+    if (savedMessages && savedMessages.length > 0) {
+      setMessages(savedMessages);
+    } else {
+      setMessages(initialMessages);
+    }
+    // We intentionally DO NOT depend on savedMessages here to avoid infinite loops.
+    // We only want to "pull" from savedMessages when the View (initialMessages) changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessages]);
+
+  // Sync conversation ID changes
+  useEffect(() => {
+    if (initialConversationId !== undefined) {
+      setConversationId(initialConversationId);
+    }
+  }, [initialConversationId]);
 
   // Auto scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isOpen]); // Also scroll when opened
+
+  const handleNewChat = () => {
+    if (onNewConversation) {
+      onNewConversation();
+    }
+    setConversationId(undefined);
+    setMessages(initialMessages); // Reset to initial greeting
+    setInput('');
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -102,9 +147,17 @@ export const CopilotSidebar = ({
             }
 
             // Save conversation_id from server (for subsequent messages)
-            if (data.conversation_id && !conversationId) {
-              setConversationId(data.conversation_id);
-              console.log('✓ Conversation ID saved:', data.conversation_id);
+            if (data.conversation_id) {
+              // Update local state if needed
+              if (conversationId !== data.conversation_id) {
+                setConversationId(data.conversation_id);
+                console.log('✓ Conversation ID saved locally:', data.conversation_id);
+
+                // Notify parent
+                if (onConversationCreated) {
+                  onConversationCreated(data.conversation_id);
+                }
+              }
             }
           } else if (streamMessage.type === 'end') {
             // Mark streaming as complete
@@ -195,7 +248,16 @@ export const CopilotSidebar = ({
           </div>
           {title}
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleNewChat}
+            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            title="开启新对话"
+          >
+            <PlusCircle size={18} />
+          </button>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
         {messages.map((msg, idx) => (

@@ -13,6 +13,7 @@ import { ProductInventoryPanel } from './inventory/ProductInventoryPanel';
 import { MaterialInventoryPanel } from './inventory/MaterialInventoryPanel';
 import { FunctionCardSection } from './inventory/FunctionCardSection';
 import { BOMInventoryTree } from './inventory/BOMInventoryTree';
+import InventoryAIAnalysisPanel from './inventory/InventoryAIAnalysisPanel';
 
 // 验证指标模型ID是否存在
 const validateMetricModel = async (modelId: string) => {
@@ -288,6 +289,9 @@ const InventoryView = ({ toggleCopilot }: Props) => {
         onOpenReverseCalculator={() => setShowBOMInventoryTree(true)}
       />
 
+      {/* AI Analysis Panel for Inventory Optimization */}
+      <InventoryAIAnalysisPanel />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
         <ProductInventoryPanel />
         <MaterialInventoryPanel />
@@ -296,7 +300,7 @@ const InventoryView = ({ toggleCopilot }: Props) => {
       {/* BOM Inventory Tree Modal */}
       {showBOMInventoryTree && (
         <div className="fixed inset-0 backdrop-blur-md bg-slate-900/20 flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden border border-white/50">
+          <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden border border-white/50">
             <BOMInventoryTree onClose={() => setShowBOMInventoryTree(false)} />
           </div>
         </div>

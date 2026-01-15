@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Sparkles, Loader2, Download, RefreshCw } from 'lucide-react';
-import { useDataMode } from '../../contexts/DataModeContext';
+import { useDataMode } from '../../../contexts/DataModeContext';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// AI Analysis Panel - 显示来自自动化工作流的AI分析报告
+// Inventory AI Analysis Panel - 库存优化专用AI分析面板
 
-
-const AIAnalysisPanel = () => {
+const InventoryAIAnalysisPanel = () => {
     const { mode } = useDataMode();
 
     // ============ AI 分析报告状态 ============
@@ -18,6 +17,9 @@ const AIAnalysisPanel = () => {
     const [brainModeLoading, setBrainModeLoading] = useState(false);
     const [isTriggering, setIsTriggering] = useState(false);
     const [fetchTrigger, setFetchTrigger] = useState(0); // Used to trigger refetch
+
+    // 库存优化专用的 DAG ID
+    const DAG_ID = '602192728104683735';
 
     useEffect(() => {
         if (mode === 'api') {
@@ -30,12 +32,11 @@ const AIAnalysisPanel = () => {
                     setBrainModeLoading(true);
 
                     // 1. Get Authentication Headers
-                    const headers = await import('../../config/apiConfig').then(m => m.getAuthHeaders());
+                    const headers = await import('../../../config/apiConfig').then(m => m.getAuthHeaders());
 
                     // 2. Fetch latest successful execution
-                    const DAG_ID = '600565437910010238';
                     const listUrl = `/proxy-agent-service/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=20`;
-                    console.log('[AIAnalysisPanel] Fetching DAG results from:', listUrl);
+                    console.log('[InventoryAIAnalysisPanel] Fetching DAG results from:', listUrl);
 
                     const listResponse = await fetch(listUrl, {
                         headers,
@@ -51,12 +52,12 @@ const AIAnalysisPanel = () => {
                         try {
                             const errorBody = await listResponse.text();
                             errorDetail = errorBody;
-                            console.error('[AIAnalysisPanel] Error response body:', errorBody);
+                            console.error('[InventoryAIAnalysisPanel] Error response body:', errorBody);
                         } catch (e) {
-                            console.error('[AIAnalysisPanel] Could not read error response body');
+                            console.error('[InventoryAIAnalysisPanel] Could not read error response body');
                         }
 
-                        console.error('[AIAnalysisPanel] List response not OK:', {
+                        console.error('[InventoryAIAnalysisPanel] List response not OK:', {
                             status: listResponse.status,
                             statusText: listResponse.statusText,
                             url: listUrl,
@@ -69,12 +70,12 @@ const AIAnalysisPanel = () => {
 
                     if (!isActive) return;  // 再次检查
 
-                    console.log('[AIAnalysisPanel] DAG results list:', listData);
+                    console.log('[InventoryAIAnalysisPanel] DAG results list:', listData);
 
                     // Find first successful run
                     let successfulRun = null;
                     const runs = Array.isArray(listData) ? listData : (listData.data || listData.results || []);
-                    console.log('[AIAnalysisPanel] Parsed runs array:', runs.length, 'items');
+                    console.log('[InventoryAIAnalysisPanel] Parsed runs array:', runs.length, 'items');
 
                     for (const run of runs) {
                         // Check for success status (could be 'success', 'completed', etc.)
@@ -87,17 +88,17 @@ const AIAnalysisPanel = () => {
 
                     if (!successfulRun && runs.length > 0) {
                         // Fallback: use first run if no explicit success status found
-                        console.log('[AIAnalysisPanel] No explicit success status found, using first run');
+                        console.log('[InventoryAIAnalysisPanel] No explicit success status found, using first run');
                         successfulRun = runs[0];
                     }
 
                     if (successfulRun) {
                         const resultId = successfulRun.id || successfulRun.result_id;
-                        console.log('[AIAnalysisPanel] Using result ID:', resultId);
+                        console.log('[InventoryAIAnalysisPanel] Using result ID:', resultId);
 
                         // 3. Fetch execution details
                         const detailUrl = `/proxy-agent-service/automation/v2/dag/${DAG_ID}/result/${resultId}`;
-                        console.log('[AIAnalysisPanel] Fetching execution details from:', detailUrl);
+                        console.log('[InventoryAIAnalysisPanel] Fetching execution details from:', detailUrl);
 
                         const detailResponse = await fetch(detailUrl, {
                             headers,
@@ -107,14 +108,14 @@ const AIAnalysisPanel = () => {
                         if (!isActive) return;  // 检查组件状态
 
                         if (!detailResponse.ok) {
-                            console.error('[AIAnalysisPanel] Detail response not OK:', detailResponse.status);
+                            console.error('[InventoryAIAnalysisPanel] Detail response not OK:', detailResponse.status);
                             throw new Error(`Failed to fetch DAG detail: ${detailResponse.status}`);
                         }
                         const detailData = await detailResponse.json();
 
                         if (!isActive) return;  // 再次检查
 
-                        console.log('[AIAnalysisPanel] Execution detail:', detailData);
+                        console.log('[InventoryAIAnalysisPanel] Execution detail:', detailData);
 
                         // 4. Get last node output
                         // Try multiple possible structures
@@ -131,14 +132,14 @@ const AIAnalysisPanel = () => {
                             nodes = detailData.results;
                         }
 
-                        console.log('[AIAnalysisPanel] Parsed nodes:', nodes.length, 'nodes');
+                        console.log('[InventoryAIAnalysisPanel] Parsed nodes:', nodes.length, 'nodes');
 
                         if (nodes.length > 0) {
                             const lastNode = nodes[nodes.length - 1];
-                            console.log('[AIAnalysisPanel] Last node:', lastNode);
+                            console.log('[InventoryAIAnalysisPanel] Last node:', lastNode);
 
                             const output = lastNode.outputs || lastNode.output || lastNode.result || {};
-                            console.log('[AIAnalysisPanel] Last node output:', output);
+                            console.log('[InventoryAIAnalysisPanel] Last node output:', output);
 
                             // Try to find a text message in output
                             let analysisText = '';
@@ -158,32 +159,32 @@ const AIAnalysisPanel = () => {
                                 analysisText = JSON.stringify(output, null, 2);
                             }
 
-                            console.log('[AIAnalysisPanel] Extracted analysis text:', analysisText.substring(0, 200) + '...');
+                            console.log('[InventoryAIAnalysisPanel] Extracted analysis text:', analysisText.substring(0, 200) + '...');
 
                             // Store raw markdown for rendering
                             setBrainModeMarkdown(analysisText);
                             // Split by newline for Word export
                             setBrainModeAnalysis(analysisText.split('\n').filter(line => line.trim().length > 0));
                         } else {
-                            console.warn('[AIAnalysisPanel] No nodes found in execution detail');
+                            console.warn('[InventoryAIAnalysisPanel] No nodes found in execution detail');
                             setBrainModeMarkdown('未找到工作流节点数据');
                             setBrainModeAnalysis(['未找到工作流节点数据']);
                         }
                     } else {
-                        console.warn('[AIAnalysisPanel] No successful runs found');
+                        console.warn('[InventoryAIAnalysisPanel] No successful runs found');
                         setBrainModeMarkdown('暂无成功的工作流运行记录');
                         setBrainModeAnalysis(['暂无成功的工作流运行记录']);
                     }
                 } catch (err) {
                     // 忽略 AbortError (请求被取消)
                     if (err instanceof Error && err.name === 'AbortError') {
-                        console.log('[AIAnalysisPanel] Request aborted');
+                        console.log('[InventoryAIAnalysisPanel] Request aborted');
                         return;
                     }
 
                     if (!isActive) return;
 
-                    console.error('[AIAnalysisPanel] Failed to fetch AI analysis:', err);
+                    console.error('[InventoryAIAnalysisPanel] Failed to fetch AI analysis:', err);
                     const errorMsg = `AI 分析服务暂时不可用: ${err instanceof Error ? err.message : '未知错误'}`;
                     setBrainModeMarkdown(errorMsg);
                     setBrainModeAnalysis([errorMsg]);
@@ -200,23 +201,21 @@ const AIAnalysisPanel = () => {
             return () => {
                 isActive = false;
                 abortController.abort();
-                console.log('[AIAnalysisPanel] Cleanup: aborted pending requests');
+                console.log('[InventoryAIAnalysisPanel] Cleanup: aborted pending requests');
             };
         }
-    }, [mode, fetchTrigger]);
+    }, [mode, fetchTrigger, DAG_ID]);
 
     // Trigger workflow and refresh
-    const DAG_ID = '600565437910010238';
-
     const regenerateAnalysis = useCallback(async () => {
         try {
             setIsTriggering(true);
             setBrainModeMarkdown('');
             setBrainModeAnalysis([]);
-            const headers = await import('../../config/apiConfig').then(m => m.getAuthHeaders());
+            const headers = await import('../../../config/apiConfig').then(m => m.getAuthHeaders());
 
             // 1. Trigger workflow
-            console.log('[AIAnalysisPanel] Triggering workflow...');
+            console.log('[InventoryAIAnalysisPanel] Triggering workflow...');
             const triggerResponse = await fetch(
                 `/proxy-agent-service/automation/v1/run-instance/${DAG_ID}`,
                 {
@@ -233,8 +232,8 @@ const AIAnalysisPanel = () => {
                 throw new Error(`触发失败: ${triggerResponse.status}`);
             }
 
-            console.log('[AIAnalysisPanel] Workflow triggered, waiting for completion...');
-            setBrainModeMarkdown('⏳ 正在生成 AI 分析报告，请稍候...');
+            console.log('[InventoryAIAnalysisPanel] Workflow triggered, waiting for completion...');
+            setBrainModeMarkdown('⏳ 正在生成库存优化 AI 分析报告,请稍候...');
 
             // 2. Poll for completion (check every 3 seconds, max 60 seconds)
             const maxAttempts = 20;
@@ -245,7 +244,7 @@ const AIAnalysisPanel = () => {
                 await new Promise(resolve => setTimeout(resolve, 3000));
                 attempts++;
 
-                console.log(`[AIAnalysisPanel] Checking status (attempt ${attempts}/${maxAttempts})...`);
+                console.log(`[InventoryAIAnalysisPanel] Checking status (attempt ${attempts}/${maxAttempts})...`);
 
                 const statusResponse = await fetch(
                     `/proxy-agent-service/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=1`,
@@ -259,7 +258,7 @@ const AIAnalysisPanel = () => {
                     if (runs.length > 0) {
                         const latestRun = runs[0];
                         const status = latestRun.status || latestRun.state || '';
-                        console.log(`[AIAnalysisPanel] Latest run status: ${status}`);
+                        console.log(`[InventoryAIAnalysisPanel] Latest run status: ${status}`);
 
                         if (status.toLowerCase() === 'success' || status.toLowerCase() === 'completed') {
                             completed = true;
@@ -271,20 +270,20 @@ const AIAnalysisPanel = () => {
             }
 
             if (!completed) {
-                console.log('[AIAnalysisPanel] Timeout waiting for completion, fetching latest results anyway');
+                console.log('[InventoryAIAnalysisPanel] Timeout waiting for completion, fetching latest results anyway');
             }
 
             // 3. Fetch latest results
             setFetchTrigger(prev => prev + 1);
 
         } catch (err) {
-            console.error('[AIAnalysisPanel] Failed to regenerate analysis:', err);
+            console.error('[InventoryAIAnalysisPanel] Failed to regenerate analysis:', err);
             setBrainModeMarkdown(`❌ 生成失败: ${err instanceof Error ? err.message : '未知错误'}`);
             setBrainModeAnalysis([`生成失败: ${err instanceof Error ? err.message : '未知错误'}`]);
         } finally {
             setIsTriggering(false);
         }
-    }, []);
+    }, [DAG_ID]);
 
 
     const isLoading = brainModeLoading;
@@ -298,7 +297,7 @@ const AIAnalysisPanel = () => {
             // Title
             children.push(
                 new Paragraph({
-                    text: 'AI 分析与建议报告',
+                    text: '库存优化 AI 分析报告',
                     heading: HeadingLevel.HEADING_1,
                     spacing: { after: 300 },
                 })
@@ -352,11 +351,11 @@ const AIAnalysisPanel = () => {
             });
 
             const blob = await Packer.toBlob(doc);
-            const filename = `AI分析报告_${new Date().toISOString().slice(0, 10)}.docx`;
+            const filename = `库存优化AI分析报告_${new Date().toISOString().slice(0, 10)}.docx`;
             saveAs(blob, filename);
         } catch (err) {
             console.error('Failed to export Word document:', err);
-            alert('导出失败，请稍后再试');
+            alert('导出失败,请稍后再试');
         }
     }, [brainModeAnalysis]);
 
@@ -366,7 +365,7 @@ const AIAnalysisPanel = () => {
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
-                    <Sparkles className="text-indigo-500" /> AI 分析与建议
+                    <Sparkles className="text-indigo-500" /> 库存优化 AI 分析
                 </h3>
                 <div className="flex items-center gap-2">
                     {mode === 'api' && (
@@ -374,7 +373,7 @@ const AIAnalysisPanel = () => {
                             onClick={regenerateAnalysis}
                             disabled={isTriggering}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="重新生成 AI 分析报告"
+                            title="重新生成库存优化 AI 分析报告"
                         >
                             {isTriggering ? (
                                 <Loader2 size={14} className="animate-spin" />
@@ -415,10 +414,10 @@ const AIAnalysisPanel = () => {
                         {isLoading ? (
                             <span className="flex items-center justify-center gap-2">
                                 <Loader2 className="animate-spin" size={14} />
-                                正在生成智能分析报告...
+                                正在生成库存优化智能分析报告...
                             </span>
                         ) : mode === 'api' ? (
-                            <span>暂无AI分析报告，请点击"重新生成"按钮生成报告</span>
+                            <span>暂无AI分析报告,请点击"重新生成"按钮生成报告</span>
                         ) : (
                             <span>请切换到"惠达供应链大脑"模式查看AI分析报告</span>
                         )}
@@ -429,4 +428,4 @@ const AIAnalysisPanel = () => {
     );
 };
 
-export default AIAnalysisPanel;
+export default InventoryAIAnalysisPanel;

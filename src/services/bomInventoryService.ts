@@ -622,13 +622,18 @@ export function buildProductBOMTree(
 export async function loadAllBOMTrees(): Promise<ProductBOMTree[]> {
     console.log('[BOM服务] 开始加载所有BOM树...');
 
-    // 并行加载数据（增加物料数据加载）
-    const [products, bomData, inventoryMap, materialMap] = await Promise.all([
-        loadProductData(),
-        loadBOMData(),
-        loadInventoryData(),
-        loadMaterialData(),
-    ]);
+    // 串行加载数据,避免同时发起多个请求导致服务器500错误
+    console.log('[BOM服务] 1/4 加载产品数据...');
+    const products = await loadProductData();
+
+    console.log('[BOM服务] 2/4 加载BOM数据...');
+    const bomData = await loadBOMData();
+
+    console.log('[BOM服务] 3/4 加载库存数据...');
+    const inventoryMap = await loadInventoryData();
+
+    console.log('[BOM服务] 4/4 加载物料数据...');
+    const materialMap = await loadMaterialData();
 
     if (products.length === 0 || bomData.length === 0) {
         console.error('[BOM服务] 数据加载失败，无法构建BOM树');
@@ -759,7 +764,7 @@ export interface ProductionAnalysisResult {
 
     // 高价值物料列表
     topExpensiveMaterials: MaterialRequirement[];
-    
+
     // 总库存价值（用于计算剩余呆滞）
     totalInventoryValue: number;
 
@@ -973,12 +978,12 @@ function generateAnalysisConclusions(
     if (replenishmentCosts && newProcurementCosts && replenishmentCosts.length >= 2) {
         const repRange = Math.max(...replenishmentCosts) - Math.min(...replenishmentCosts);
         const procRange = Math.max(...newProcurementCosts) - Math.min(...newProcurementCosts);
-        
+
         // 计算简单斜率
         const n = replenishmentCosts.length;
-        const repSlope = (replenishmentCosts[n-1] - replenishmentCosts[0]) / 
-                         ((productionQuantities?.[n-1] || n) - (productionQuantities?.[0] || 1));
-        
+        const repSlope = (replenishmentCosts[n - 1] - replenishmentCosts[0]) /
+            ((productionQuantities?.[n - 1] || n) - (productionQuantities?.[0] || 1));
+
         conclusions.push(`新增金额和消耗采购同生产数量之间呈线性关系，斜率较${Math.abs(repSlope) > 100 ? '陡' : '平缓'}`);
         conclusions.push(`实际生产数量的极差范围：${(repRange / 10000).toFixed(1)}万 ~ ${(procRange / 10000).toFixed(1)}万元`);
     }
@@ -994,7 +999,7 @@ function generateAnalysisConclusions(
     // 4. 高价值物料消耗策略
     if (topMaterials.length > 0) {
         const topMaterial = topMaterials[0];
-        const formatValue = (v: number) => v >= 10000 ? `¥${(v/10000).toFixed(1)}万` : `¥${v.toLocaleString()}`;
+        const formatValue = (v: number) => v >= 10000 ? `¥${(v / 10000).toFixed(1)}万` : `¥${v.toLocaleString()}`;
         conclusions.push(`最高价值物料：${topMaterial.name}（${formatValue(topMaterial.stockValue)}），建议作为生产规划起点`);
     }
 
@@ -1118,7 +1123,7 @@ export function calculateProductionAnalysis(productBOM: ProductBOMTree): Product
     const flatMaterials = getFlatMaterialList(productBOM.rootNode);
     const sortedMaterials = flatMaterials.sort((a, b) => b.stockValue - a.stockValue);
     const topExpensive = sortedMaterials.slice(0, 10);
-    
+
     // 5.1 计算所有物料的总库存价值（用于图表中的剩余呆滞计算）
     const totalInventoryValue = flatMaterials.reduce((sum, m) => sum + m.stockValue, 0);
 
