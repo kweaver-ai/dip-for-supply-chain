@@ -19,6 +19,7 @@ interface GanttBOMTreeProps {
   tasks: GanttTask[];
   onTaskHover?: (task: GanttTask, position: { x: number; y: number }) => void;
   onTaskLeave?: () => void;
+  mode?: 'default' | 'material-ready-v2';
 }
 
 // Internal component for tree node rendering
@@ -31,6 +32,7 @@ interface TreeNodeProps {
   onToggleExpand: (taskId: string) => void;
   onTaskHover?: (task: GanttTask, position: { x: number; y: number }) => void;
   onTaskLeave?: () => void;
+  mode?: 'default' | 'material-ready-v2';
 }
 
 const TreeNode: React.FC<TreeNodeProps> = ({
@@ -41,7 +43,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   expandedNodes,
   onToggleExpand,
   onTaskHover,
-  onTaskLeave
+  onTaskLeave,
+  mode = 'default'
 }) => {
   const isExpanded = expandedNodes.has(task.id);
   const hasChildren = task.children && task.children.length > 0;
@@ -176,6 +179,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
                   showTimeInfo={level === 0}
                   onHover={handleTaskHover}
                   onLeave={handleTaskLeave}
+                  mode={mode}
                 />
               </div>
             )}
@@ -195,13 +199,14 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           onToggleExpand={onToggleExpand}
           onTaskHover={onTaskHover}
           onTaskLeave={onTaskLeave}
+          mode={mode}
         />
       ))}
     </>
   );
 };
 
-export function GanttBOMTree({ tasks, onTaskHover, onTaskLeave }: GanttBOMTreeProps) {
+export function GanttBOMTree({ tasks, onTaskHover, onTaskLeave, mode = 'default' }: GanttBOMTreeProps) {
   // Track expanded nodes
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
@@ -378,6 +383,7 @@ export function GanttBOMTree({ tasks, onTaskHover, onTaskLeave }: GanttBOMTreePr
             onToggleExpand={handleToggleExpand}
             onTaskHover={handleTaskHover}
             onTaskLeave={handleTaskLeave}
+            mode={mode}
           />
         )}
       </div>

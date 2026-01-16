@@ -12,14 +12,16 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Package, AlertTriangle } from 'lucide-react';
-import type { BOMItem, GanttTask, RiskAlert } from '../../types/ontology';
+import type { BOMItem, GanttTask, RiskAlert, ProductionPlanMode, MaterialReadyGanttTask, MaterialReadyCalculationResult } from '../../types/ontology';
 // TODO: buildBOMTree函数需要重构以匹配BOMItem接口，将在User Story 1中实现
 // import { buildBOMTree } from '../../utils/ganttUtils';
-import { fetchBOMData, fetchProductList, buildPlanInfo } from '../../services/mpsDataService';
+import { fetchBOMData, fetchProductList, buildPlanInfo, fetchMaterialReadyV2Data } from '../../services/mpsDataService';
+import { calculateMaterialReadyModeV2 } from '../../utils/materialReadyCalculatorV2';
 import { ProductSelector } from './ProductSelector';
 import { ProductInfoPanel } from './ProductInfoPanel';
-import { RiskAlertsPanel } from './RiskAlertsPanel';
 import { GanttChartSection } from './GanttChartSection';
+import { PlanModeSelector } from './PlanModeSelector';
+import { GanttHeader } from './GanttHeader';
 import { monitorLoadTime, monitorCalculationTime } from '../../utils/mpsPerformanceMonitor';
 // ============================================================================
 // 类型定义（使用ontology.ts中的类型）
@@ -378,11 +380,25 @@ const MPSPrototype = () => {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState<number>(0);
   const [loadStartTime, setLoadStartTime] = useState<number>(0);
-  const [hoveredTask, setHoveredTask] = useState<GanttTask | null>(null);
+  const [hoveredTask, setHoveredTask] = useState<GanttTask | MaterialReadyGanttTask | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   // TODO: dataSource and dataSourceError are set but not used in UI - may be used in future features
   const [, setDataSource] = useState<'api' | 'fallback'>('api');
   const [, setDataSourceError] = useState<string | null>(null);
+
+  // 计划模式状态
+  const [planMode, setPlanMode] = useState<ProductionPlanMode>('default');
+
+  // 齐套模式V2数据
+  const [v2Data, setV2Data] = useState<{
+    product: any;
+    productionPlan: any;
+    bomItems: BOMItem[];
+    materialDetails: Map<string, any>;
+    inventoryMap: Map<string, number>;
+  } | null>(null);
+  const [v2Loading, setV2Loading] = useState<boolean>(false);
+  const [v2Result, setV2Result] = useState<MaterialReadyCalculationResult | null>(null);
 
   // 产品列表加载由ProductSelector组件内部处理（使用和DP面板相同的逻辑）
 
@@ -504,6 +520,57 @@ const MPSPrototype = () => {
 
     loadProductBOM();
   }, [selectedProductId, retryCount]);
+
+  // 加载齐套模式V2数据
+  useEffect(() => {
+    if (!selectedProductId || planMode !== 'material-ready-v2') {
+      return;
+    }
+
+    const loadV2Data = async () => {
+      console.log(`[MPSPrototype] ========== 加载齐套模式V2数据 ==========`);
+      setV2Loading(true);
+
+      try {
+        const data = await fetchMaterialReadyV2Data(selectedProductId);
+        console.log(`[MPSPrototype] V2数据加载完成:`, {
+          hasProduct: !!data.product,
+          hasProductionPlan: !!data.productionPlan,
+          bomCount: data.bomItems.length,
+          materialDetailsCount: data.materialDetails.size,
+          inventoryCount: data.inventoryMap.size,
+        });
+
+        setV2Data(data);
+
+        // 计算V2结果
+        if (data.product && data.productionPlan) {
+          const result = calculateMaterialReadyModeV2(
+            data.product,
+            data.productionPlan,
+            data.bomItems,
+            data.materialDetails,
+            data.inventoryMap
+          );
+          console.log(`[MPSPrototype] V2计算结果:`, {
+            totalCycle: result.totalCycle,
+            isOverdue: result.isOverdue,
+            overdueDays: result.overdueDays,
+            readyCount: result.readyMaterials.length,
+            notReadyCount: result.notReadyMaterials.length,
+            riskCount: result.risks.length,
+          });
+          setV2Result(result);
+        }
+      } catch (err) {
+        console.error(`[MPSPrototype] V2数据加载失败:`, err);
+      } finally {
+        setV2Loading(false);
+      }
+    };
+
+    loadV2Data();
+  }, [selectedProductId, planMode]);
 
   const selectedProduct = useMemo(
     () => {
@@ -668,6 +735,12 @@ const MPSPrototype = () => {
     );
   }
 
+  // 根据模式选择要显示的数据
+  const isV2Mode = planMode === 'material-ready-v2';
+  const displayTasks = isV2Mode && v2Result ? v2Result.tasks : tasks;
+  const displayCycle = isV2Mode && v2Result ? v2Result.totalCycle : totalCycle;
+  const displayRisks = isV2Mode && v2Result ? v2Result.risks : risks;
+
   return (
     <div className="space-y-6">
       <ProductSelector
@@ -680,22 +753,56 @@ const MPSPrototype = () => {
         inventoryStatus={inventoryStatus}
       />
 
-      <GanttChartSection
-        tasks={tasks}
-        totalCycle={totalCycle}
-        hoveredTask={hoveredTask}
-        tooltipPosition={tooltipPosition}
-        onTaskHover={(task, position) => {
-          setHoveredTask(task);
-          setTooltipPosition(position);
-        }}
-        onTaskLeave={() => {
-          setHoveredTask(null);
-          setTooltipPosition(null);
-        }}
+      {/* 计划模式选择器 */}
+      <PlanModeSelector
+        currentMode={planMode}
+        onModeChange={setPlanMode}
+        disabled={loading || v2Loading}
       />
 
-      <RiskAlertsPanel risks={risks} />
+      {/* 齐套模式V2: 显示顶部信息栏 */}
+      {isV2Mode && v2Result && (
+        <GanttHeader
+          productCode={selectedProductId || ''}
+          productName={selectedProduct.name}
+          planStartDate={v2Result.planStartDate}
+          planEndDate={v2Result.planEndDate}
+          actualStartDate={v2Result.actualStartDate}
+          actualEndDate={v2Result.actualEndDate}
+          isOverdue={v2Result.isOverdue}
+          overdueDays={v2Result.overdueDays}
+          totalCycle={v2Result.totalCycle}
+        />
+      )}
+
+      {/* V2模式加载中 */}
+      {isV2Mode && v2Loading && (
+        <div className="bg-white rounded-lg shadow-sm p-6 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-2"></div>
+            <p className="text-sm text-slate-600">正在计算齐套模式...</p>
+          </div>
+        </div>
+      )}
+
+      {/* 甘特图 */}
+      {(!isV2Mode || !v2Loading) && (
+        <GanttChartSection
+          tasks={displayTasks as GanttTask[]}
+          totalCycle={displayCycle}
+          hoveredTask={hoveredTask}
+          tooltipPosition={tooltipPosition}
+          onTaskHover={(task, position) => {
+            setHoveredTask(task);
+            setTooltipPosition(position);
+          }}
+          onTaskLeave={() => {
+            setHoveredTask(null);
+            setTooltipPosition(null);
+          }}
+          mode={planMode}
+        />
+      )}
     </div>
   );
 };
