@@ -59,7 +59,7 @@ export interface GlobalApiConfig {
 // ============================================================================
 // 🔑 全局 Token 配置 - 只需修改这一处即可应用到所有 API
 // ============================================================================
-const GLOBAL_API_TOKEN = 'ory_at_OfXyAulm1dsx5cynFX1uk-roEDC6XKZJA0Eg0rE4dRo.0UXbhs7RFitoJ4VktfXneIlTNPsfS3GU1MAK7h0BG6M';
+const GLOBAL_API_TOKEN = 'ory_at_Rn_b9d9f7G3XG9kmbS1zNFcXKRq0iFeMTTL98U8NJaE.A6c-cIf1XR2Gxu1oDPgHP74SwRW0DI7xHP-fWaLmcG4';
 
 // ============================================================================
 // 环境变量读取

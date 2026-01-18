@@ -19,7 +19,7 @@ const InventoryAIAnalysisPanel = () => {
     const [fetchTrigger, setFetchTrigger] = useState(0); // Used to trigger refetch
 
     // 库存优化专用的 DAG ID
-    const DAG_ID = '602192728104683735';
+    const DAG_ID = '602382917091510487';
 
     useEffect(() => {
         if (mode === 'api') {

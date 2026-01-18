@@ -235,18 +235,7 @@ function buildGanttTasksBackward(
         duration = deliveryDurationDays;
       }
 
-      // 生成风险提示
-      const shortage = requiredQuantity - availableInventory;
-      context.risks.push({
-        type: 'material_shortage',
-        level: availableInventory === 0 ? 'critical' : 'warning',
-        message: `${materialType === '自制' ? '组件' : '物料'} ${node.code}-${node.name} 库存不足，缺口${shortage}，需${duration}天${materialType === '自制' ? '生产' : '采购'}`,
-        itemId: node.code,
-        itemName: `${node.code}-${node.name}`,
-        aiSuggestion: materialType === '自制'
-          ? `建议提前安排生产，当前库存${availableInventory}，需求${requiredQuantity}`
-          : `建议立即启动采购流程，考虑备用供应商`,
-      });
+      // 风险提示已移除（不再生成）
     }
 
     // 计算开始时间
@@ -485,15 +474,7 @@ export function calculateMaterialReadyModeV2(
   if (isOverdue) {
     markOverdueTasks([productTask], planEndDate);
 
-    // 添加整体风险提示
-    context.risks.unshift({
-      type: 'schedule_overdue',
-      level: 'critical',
-      message: `生产计划预计延期 ${overdueDays} 天，实际结束时间 ${actualEndDate.toISOString().split('T')[0]}`,
-      itemId: product.product_code,
-      itemName: `${product.product_code}-${product.product_name}`,
-      aiSuggestion: `建议：1) 加急采购缺货物料；2) 增加生产班次；3) 寻找替代供应商`,
-    });
+    // 风险提示已移除（不再生成）
   }
 
   // 计算总周期

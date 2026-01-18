@@ -44,7 +44,7 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
           // 转换分析数据
           analysisData = smartAnalyses.map(analysis => ({
             productId: analysis.productId,
-            productName: `${analysis.productId} ${analysis.productName}`,
+            productName: analysis.productName,
             currentStock: analysis.inventoryStatus.currentStock,
             safetyStock: Math.ceil(analysis.demandTrend.averageDailyDemand * 30),
             stockDays: analysis.inventoryStatus.stockDays,

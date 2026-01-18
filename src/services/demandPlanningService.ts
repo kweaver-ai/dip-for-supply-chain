@@ -247,6 +247,56 @@ export class DemandPlanningService {
   }
 
   /**
+   * Fetch product sales history directly (past 12 months)
+   * This is a convenience method for components that need raw historical data
+   * @param productId Product ID (product_code)
+   * @returns Array of ProductSalesHistory sorted by month
+   */
+  async fetchProductSalesHistory(productId: string): Promise<ProductSalesHistory[]> {
+    console.log(`[DemandPlanningService] fetchProductSalesHistory for product: ${productId}`);
+
+    // Resolve product object type
+    const productObjectType = await this.resolveProductObjectType();
+    if (!productObjectType || !productObjectType.id) {
+      console.error('[DemandPlanningService] Failed to resolve product object type');
+      return [];
+    }
+
+    // Resolve product_sales_history logic property
+    const logicProperty = this.resolveLogicProperty(productObjectType, 'product_sales_history');
+    if (!logicProperty) {
+      console.error('[DemandPlanningService] product_sales_history logic property not found');
+      return [];
+    }
+
+    // Calculate time range: past 12 months
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+
+    // End: last day of last month
+    const endDate = new Date(currentYear, currentMonth, 0);
+    const end = endDate.getTime();
+
+    // Start: 12 months before current month
+    const startDate = new Date(currentYear, currentMonth - 12, 1);
+    const start = startDate.getTime();
+
+    console.log(`[DemandPlanningService] Fetching history from ${new Date(start).toISOString()} to ${new Date(end).toISOString()}`);
+
+    // Fetch historical data
+    const history = await this.fetchLogicPropertyData(productObjectType, logicProperty, productId, {
+      instant: false,
+      start: start,
+      end: end,
+      step: 'month',
+    });
+
+    console.log(`[DemandPlanningService] fetchProductSalesHistory returned ${history.length} months`);
+    return history;
+  }
+
+  /**
    * Fetch logic property data using ADP Ontology Query API with include_logic_params
    * @param productObjectType Product object type (already resolved, should not be resolved again)
    * @param logicProperty Logic property configuration
@@ -295,7 +345,7 @@ export class DemandPlanningService {
       };
       
       console.log(`[DemandPlanningService] ADP properties dynamic_params:`, JSON.stringify(dynamicParams, null, 2));
-      
+
       // Query specific property values using the new /properties endpoint
       // This is the recommended way to fetch logic property values for specific instances
       const response = await ontologyApi.queryObjectPropertyValues(objectTypeId, {
@@ -307,25 +357,28 @@ export class DemandPlanningService {
         ],
         dynamic_params: dynamicParams
       });
-      
-      if (response.entries.length === 0) {
+
+      // API returns { datas: [...] } structure, not { entries: [...] }
+      const responseData = (response as any).datas || response.entries || [];
+
+      if (responseData.length === 0) {
         console.warn(`[DemandPlanningService] No property values returned for productId: ${productId}`);
         return [];
       }
-      
-      const entry = response.entries[0];
+
+      const entry = responseData[0];
       const logicPropertyValue = entry[logicProperty.name];
-      
+
       console.log(`[DemandPlanningService] Logic property raw value for '${logicProperty.name}':`, JSON.stringify(logicPropertyValue, null, 2));
-      
+
       if (!logicPropertyValue) {
         console.warn(`[DemandPlanningService] Logic property '${logicProperty.name}' not found in instance data. Entry keys:`, Object.keys(entry));
         return [];
       }
-      
+
       // Convert logic property value to ProductSalesHistory[]
       const salesHistory: ProductSalesHistory[] = [];
-      
+
       if (Array.isArray(logicPropertyValue)) {
         console.log(`[DemandPlanningService] Processing logic property as Array, length: ${logicPropertyValue.length}`);
         for (const item of logicPropertyValue) {
@@ -343,6 +396,25 @@ export class DemandPlanningService {
               month,
               quantity: typeof item.value === 'number' ? item.value : 0,
             });
+          }
+        }
+      } else if (logicPropertyValue.datas && Array.isArray(logicPropertyValue.datas) && logicPropertyValue.datas.length > 0) {
+        // Handle nested metric model format: { model: {...}, datas: [{ times: [...], values: [...] }], step: "month" }
+        console.log(`[DemandPlanningService] Processing logic property as nested Metric Model format (datas[].times/values)`);
+        const metricData = logicPropertyValue.datas[0];
+        if (metricData.times && metricData.values) {
+          for (let i = 0; i < metricData.times.length; i++) {
+            const timestamp = metricData.times[i];
+            const value = metricData.values[i];
+            if (value !== null && value !== undefined) {
+              const date = new Date(timestamp);
+              const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+              salesHistory.push({
+                productId,
+                month,
+                quantity: typeof value === 'number' ? value : 0,
+              });
+            }
           }
         }
       } else if (logicPropertyValue.times && logicPropertyValue.values) {
@@ -840,7 +912,7 @@ export class DemandPlanningService {
       case 'holt_linear':
         return holtLinearSmoothing(history, 18);
       case 'holt_winters':
-        return holtWintersSmoothing(history, 18, 12);
+        return holtWintersSmoothing(history, 18, { seasonLength: 12 });
       default:
         throw new Error(`Unknown algorithm: ${algorithm}`);
     }
@@ -982,6 +1054,8 @@ export class DemandPlanningService {
       simple_exponential: '简单指数平滑预测需求',
       holt_linear: 'Holt线性平滑预测需求',
       holt_winters: 'Holt-Winters三重指数平滑预测需求',
+      arima: 'ARIMA时间序列预测需求',
+      ensemble: '集成预测需求',
     };
     return displayNames[algorithm] || `${algorithm}预测需求`;
   }
@@ -1002,6 +1076,15 @@ export class DemandPlanningService {
 
     if (algorithm === 'prophet') {
       forecastValues = await this.generateProphetForecast(productId, history);
+    } else if (algorithm === 'arima' || algorithm === 'ensemble') {
+      // ARIMA and ensemble require backend API support
+      // Fall back to holt_winters for now
+      console.warn(`[DemandPlanningService] Algorithm ${algorithm} requires backend API, falling back to holt_winters`);
+      forecastValues = await this.generateExponentialSmoothingForecast(
+        productId,
+        history,
+        'holt_winters'
+      );
     } else {
       forecastValues = await this.generateExponentialSmoothingForecast(
         productId,
@@ -1040,7 +1123,6 @@ export class DemandPlanningService {
       historicalActual: new Array(18).fill(null),
       confirmedOrder: new Array(18).fill(null),
       consensusSuggestion: new Array(18).fill(0),
-      generatedAt: new Date(),
     };
   }
 
@@ -1071,7 +1153,6 @@ export class DemandPlanningService {
     return {
       ...productForecast,
       algorithmForecasts: updatedForecasts,
-      generatedAt: new Date(),
     };
   }
 
@@ -1126,7 +1207,6 @@ export class DemandPlanningService {
     return {
       ...productForecast,
       consensusSuggestion,
-      generatedAt: new Date(),
     };
   }
 

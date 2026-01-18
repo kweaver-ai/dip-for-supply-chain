@@ -33,7 +33,7 @@ const AIAnalysisPanel = () => {
                     const headers = await import('../../config/apiConfig').then(m => m.getAuthHeaders());
 
                     // 2. Fetch latest successful execution
-                    const DAG_ID = '600565437910010238';
+                    const DAG_ID = '600729428670073214';
                     const listUrl = `/proxy-agent-service/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=20`;
                     console.log('[AIAnalysisPanel] Fetching DAG results from:', listUrl);
 
@@ -206,7 +206,7 @@ const AIAnalysisPanel = () => {
     }, [mode, fetchTrigger]);
 
     // Trigger workflow and refresh
-    const DAG_ID = '600565437910010238';
+    const DAG_ID = '600729428670073214';
 
     const regenerateAnalysis = useCallback(async () => {
         try {

@@ -506,6 +506,23 @@ export type StockoutRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type ForecastConfidenceLevel = 'low' | 'medium' | 'high';
 
 /**
+ * Forecast algorithm type - supported prediction algorithms
+ * - prophet: Facebook Prophet (requires backend API)
+ * - simple_exponential: Simple Exponential Smoothing (local support)
+ * - holt_linear: Holt Linear Exponential Smoothing (local support)
+ * - holt_winters: Holt-Winters Triple Exponential Smoothing (local support)
+ * - arima: ARIMA Time Series (requires backend API)
+ * - ensemble: Ensemble Prediction (requires backend API)
+ */
+export type ForecastAlgorithm =
+  | 'prophet'
+  | 'simple_exponential'
+  | 'holt_linear'
+  | 'holt_winters'
+  | 'arima'
+  | 'ensemble';
+
+/**
  * Optimization suggestion type
  */
 export type SuggestionType = 'replenish' | 'clearance' | 'safety_stock_adjustment';
@@ -548,7 +565,7 @@ export interface DemandForecast {
   forecastPeriod: number;               // Forecast period in days (30, 60, 90)
   predictedDemand: number;              // Predicted demand quantity
   confidenceLevel: ForecastConfidenceLevel; // Confidence level
-  calculationMethod: 'moving_average' | 'exponential_smoothing' | 'linear_regression';  // Calculation method used
+  calculationMethod: 'moving_average' | 'exponential_smoothing' | 'linear_regression' | 'prophet' | 'simple_exponential' | 'holt_linear' | 'holt_winters' | 'arima' | 'ensemble';  // Calculation method used
   forecastModel: string;                // Forecast model name (e.g., "移动平均", "指数平滑", "线性回归")
   historicalDataPoints: number;         // Number of historical data points used
   lastUpdated: string;                 // ISO timestamp
@@ -1165,10 +1182,7 @@ export interface PlanningPanelProps {
 // Demand Planning Types (供应链计划 - 需求计划)
 // ============================================================================
 
-/**
- * 需求预测算法类型
- */
-export type ForecastAlgorithm = 'prophet' | 'simple_exponential' | 'holt_linear' | 'holt_winters';
+// Note: ForecastAlgorithm type is defined above in "Product Supply Optimization Types" section
 
 /**
  * 产品选项（用于产品选择器）

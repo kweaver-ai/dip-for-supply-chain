@@ -1,19 +1,25 @@
 /**
  * Product Info Panel Component
- * 
+ *
  * 产品信息面板组件，显示产品的关键信息指标
+ *
+ * 修改说明：
+ * 1. 移除月度产能卡片
+ * 2. 生产计划量卡片显示：计划数量、计划开始时间、结束时间
+ * 3. 在手订单量 = 累计签约数量 - 累计发货数量
  */
 
-import { BarChart3, CheckCircle, AlertTriangle } from 'lucide-react';
+import { BarChart3, CheckCircle, AlertTriangle, Calendar } from 'lucide-react';
 
 interface Product {
   id: string;
   name: string;
   inventory: number;
   safetyStock: number;
-  monthlyCapacity: number;
-  orderQuantity: number;
-  plannedQuantity: number;
+  orderQuantity: number;       // 在手订单量（累计签约数量 - 累计发货数量）
+  plannedQuantity: number;     // 生产计划量
+  planStartTime?: string;      // 计划开始时间
+  planEndTime?: string;        // 计划结束时间
 }
 
 interface InventoryStatus {
@@ -27,6 +33,17 @@ interface ProductInfoPanelProps {
   inventoryStatus: InventoryStatus;
 }
 
+/**
+ * 格式化日期为 MM/DD 格式
+ */
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${month}/${day}`;
+}
+
 export const ProductInfoPanel = ({ product, inventoryStatus }: ProductInfoPanelProps) => {
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -34,31 +51,33 @@ export const ProductInfoPanel = ({ product, inventoryStatus }: ProductInfoPanelP
         <BarChart3 className="text-indigo-500" size={20} />
         <h2 className="text-lg font-semibold text-slate-800">产品信息</h2>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* 生产计划量卡片：显示计划数量、开始时间、结束时间 */}
         <div className="p-4 bg-slate-50 rounded-lg">
           <div className="text-sm text-slate-600 mb-1">生产计划量</div>
           <div className="text-2xl font-bold text-indigo-600">{product.plannedQuantity.toLocaleString()}</div>
-          <div className="text-xs text-slate-500 mt-1">未来3个月共识需求</div>
+          <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+            <Calendar className="w-3 h-3" />
+            <span>{formatDate(product.planStartTime)} ~ {formatDate(product.planEndTime)}</span>
+          </div>
         </div>
+        {/* 库存量卡片 */}
         <div className="p-4 bg-slate-50 rounded-lg">
           <div className="text-sm text-slate-600 mb-1">库存量</div>
           <div className="text-2xl font-bold text-slate-800">{product.inventory.toLocaleString()}</div>
           <div className="text-xs text-slate-500 mt-1">当前库存</div>
         </div>
+        {/* 安全库存卡片 */}
         <div className="p-4 bg-slate-50 rounded-lg">
           <div className="text-sm text-slate-600 mb-1">安全库存</div>
           <div className="text-2xl font-bold text-slate-800">{product.safetyStock.toLocaleString()}</div>
           <div className="text-xs text-slate-500 mt-1">最低安全库存</div>
         </div>
-        <div className="p-4 bg-slate-50 rounded-lg">
-          <div className="text-sm text-slate-600 mb-1">月度产能</div>
-          <div className="text-2xl font-bold text-blue-600">{product.monthlyCapacity.toLocaleString()}</div>
-          <div className="text-xs text-slate-500 mt-1">每月可生产量</div>
-        </div>
+        {/* 在手订单量卡片：累计签约数量 - 累计发货数量 */}
         <div className="p-4 bg-slate-50 rounded-lg">
           <div className="text-sm text-slate-600 mb-1">在手订单量</div>
           <div className="text-2xl font-bold text-orange-600">{product.orderQuantity.toLocaleString()}</div>
-          <div className="text-xs text-slate-500 mt-1">已下单未交付</div>
+          <div className="text-xs text-slate-500 mt-1">签约数量 - 发货数量</div>
         </div>
       </div>
 

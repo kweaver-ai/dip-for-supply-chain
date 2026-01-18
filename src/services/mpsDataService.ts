@@ -119,8 +119,14 @@ export async function fetchInventory(productCode: string): Promise<Inventory | n
 }
 
 /**
- * 获取在手订单量（累计签约数量）
+ * 获取在手订单量（累计签约数量 - 累计发货数量）
  * 符合Constitution Principle 1: 仅从API获取数据，字段名遵循HD供应链业务知识网络.json
+ *
+ * 计算逻辑：
+ * - 查询该产品的所有销售订单
+ * - 累加所有订单的 signing_quantity（签约数量）
+ * - 累加所有订单的 shipping_quantity（发货数量）
+ * - 返回差值：累计签约数量 - 累计发货数量
  */
 export async function fetchPendingOrders(productCode: string): Promise<number> {
   const condition: QueryCondition = {
@@ -135,13 +141,23 @@ export async function fetchPendingOrders(productCode: string): Promise<number> {
     limit: 1000,
   });
 
-  // 累加所有匹配记录的signing_quantity（不过滤状态）
-  const totalQuantity = response.entries.reduce((sum: number, item: any) => {
-    const quantity = item.signing_quantity ? parseInt(item.signing_quantity) : 0;
-    return sum + quantity;
-  }, 0);
+  // 累加所有匹配记录的签约数量和发货数量
+  let totalSigningQuantity = 0;
+  let totalShippingQuantity = 0;
 
-  return totalQuantity;
+  response.entries.forEach((item: any) => {
+    const signingQty = item.signing_quantity ? parseInt(item.signing_quantity) : 0;
+    const shippingQty = item.shipping_quantity ? parseFloat(item.shipping_quantity) : 0;
+    totalSigningQuantity += signingQty;
+    totalShippingQuantity += shippingQty;
+  });
+
+  // 在手订单量 = 累计签约数量 - 累计发货数量
+  const pendingOrderQuantity = totalSigningQuantity - totalShippingQuantity;
+
+  console.log(`[mpsDataService] 在手订单量计算: 签约${totalSigningQuantity} - 发货${totalShippingQuantity} = ${pendingOrderQuantity}`);
+
+  return Math.max(0, pendingOrderQuantity); // 确保不返回负数
 }
 
 /**
