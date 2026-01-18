@@ -1,0 +1,20 @@
+# Prophet Forecast Service Dependencies
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# Prophet and Data Science
+prophet==1.1.5
+pandas==2.1.4
+numpy==1.26.3
+
+# API utilities
+pydantic==2.5.3
+python-multipart==0.0.6
+
+# CORS support
+starlette==0.35.1
+
+# Logging
+python-json-logger==2.0.7

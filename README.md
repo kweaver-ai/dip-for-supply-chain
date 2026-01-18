@@ -1,207 +1,445 @@
-# SupplyChainBrain - 供应链大脑前端应用
+# SupplyChainBrain
 
-The supply chain Brain is an AI-assisted analysis and decision-making system based on the supply chain knowledge network and the ontology modeling method.
+[中文](README.zh.md) | English
 
-这是一个基于 React + TypeScript + Vite 的供应链管理系统前端应用。
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-## 启动开发服务器
+SupplyChainBrain is an AI-powered supply chain analysis and decision support system built on the DIP platform. It leverages supply chain knowledge networks and ontology modeling to provide intelligent analysis, forecasting, and optimization recommendations for supply chain operations.
 
-### ⚠️ 重要：必须先启动代理服务器
+The system is built with React + TypeScript + Vite and integrates with the DIP platform (see [KWeaver](https://github.com/kweaver-ai/kweaver/)) for knowledge network and Agent services.
 
-前端通过代理服务器转发API请求，**必须先启动代理服务器**才能正常连接API。
+## 📚 Quick Links
 
-### 方法1：使用一键启动脚本（推荐）
+- 🚀 [Quick Start](#quick-start)
+- 📖 [System Architecture](#system-architecture)
+- 🎯 [Features](#features)
+- 🔧 [Development Guide](#development-guide)
+- 📄 [License](LICENSE) - Apache License 2.0
+- 🐛 [Report Bug](https://github.com/your-org/supply-chain-brain/issues) - Report a bug or issue
+- 💡 [Request Feature](https://github.com/your-org/supply-chain-brain/issues) - Suggest a new feature
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 16+
+- npm or yarn
+- Python 3.11+ (optional, for Prophet forecast algorithm)
+- DIP platform running (see [KWeaver](https://github.com/kweaver-ai/kweaver/))
+
+### Frontend Application
+
+#### ⚠️ Important: Start Proxy Server First
+
+The frontend forwards API requests through a proxy server. **You must start the proxy server first** to connect to APIs properly.
+
+**Method 1: One-click Start Script (Recommended)**
 
 ```bash
 # Windows
 start-all.bat
 
-# 这会自动：
-# 1. 检查并启动代理服务器（如果未运行）
-# 2. 启动前端开发服务器
+# This will automatically:
+# 1. Check and start the proxy server (if not running)
+# 2. Start the frontend development server
 ```
 
-### 方法2：手动启动
+**Method 2: Manual Start**
 
-**步骤1：启动代理服务器**
+**Step 1: Start Proxy Server**
 
-打开第一个终端窗口：
+Open the first terminal window:
 
 ```bash
-cd frontend
 node proxy-server.js
-# 或使用批处理文件
-start-proxy.bat
 ```
 
-代理服务器将在 `http://127.0.0.1:30777` 上运行。
+The proxy server will run on `http://127.0.0.1:30777`.
 
-**步骤2：启动前端开发服务器**
+**Step 2: Start Frontend Development Server**
 
-打开第二个终端窗口：
+Open the second terminal window:
 
 ```bash
-cd frontend
-npm install  # 如果还没安装依赖
+npm install  # If dependencies are not installed
 npm run dev
 ```
 
-前端服务器将在 `http://127.0.0.1:5173` 上运行。
+The frontend server will run on `http://127.0.0.1:5173`.
 
-### 验证连接
+### Algorithm Service (Optional)
 
-1. 打开浏览器访问 `http://127.0.0.1:5173`
-2. 打开浏览器控制台（F12）
-3. 在控制台运行以下代码进行连接诊断：
+If you need to use the Prophet demand forecasting algorithm, start the backend Python service.
+
+**Step 1: Install Python Dependencies**
+
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# or venv\Scripts\activate  # Windows
+
+pip install -r requirements.txt
+```
+
+**Step 2: Start Algorithm Service**
+
+```bash
+python run.py
+```
+
+The service will start on `http://localhost:8000`.
+
+**Verify Service**
+
+```bash
+curl http://localhost:8000/health
+# Should return: {"status":"healthy","service":"prophet-forecast","version":"1.0.0"}
+```
+
+> **Note**: If the Prophet service is not started, the system will automatically use the built-in Holt-Winters algorithm as a fallback, which does not affect basic functionality.
+
+### Verify Connection
+
+1. Open browser and visit `http://127.0.0.1:5173`
+2. Open browser console (F12)
+3. Run the following code in the console for connection diagnostics:
 
 ```javascript
-// 导入诊断工具
+// Import diagnostic tools
 import { runAllTests, printTestResults } from './src/utils/apiConnectionTest';
 
-// 运行测试
+// Run tests
 const results = await runAllTests();
 printTestResults(results);
 ```
 
-### 常见问题
+## System Architecture
 
-**Q: API请求失败，提示连接错误**
-- ✅ 检查代理服务器是否运行（应该能看到代理服务器的日志输出）
-- ✅ 检查端口30777是否被占用
-- ✅ 确认代理服务器窗口没有报错
+```
+SupplyChainBrain/
+├── src/                        # Frontend source code
+│   ├── components/            # React components
+│   │   ├── product-supply-optimization/  # Product supply optimization module
+│   │   ├── inventory/         # Inventory management module
+│   │   ├── cockpit/          # Cockpit module
+│   │   └── ...
+│   ├── services/             # API service layer
+│   │   ├── demandPlanningService.ts       # Demand planning service
+│   │   ├── forecastAlgorithmService.ts    # Frontend forecast algorithms
+│   │   └── forecastOperatorService.ts     # Forecast operator service (API integration)
+│   ├── api/                  # HTTP client
+│   ├── config/               # Configuration files
+│   └── types/                # TypeScript type definitions
+├── backend/                   # Backend algorithm service (Python)
+│   ├── app/
+│   │   ├── main.py           # FastAPI application
+│   │   ├── models.py         # Pydantic models
+│   │   └── prophet_service.py # Prophet forecast service
+│   ├── requirements.txt      # Python dependencies
+│   └── run.py               # Startup script
+├── docs/                     # Documentation
+└── public/                   # Static resources
+```
 
-**Q: 返回401 Unauthorized**
-- ✅ 检查token是否正确配置在 `src/config/apiConfig.ts`
-- ✅ 确认token未过期
+## Features
 
-**Q: 返回404 Not Found**
-- ✅ 检查API baseUrl配置是否正确
-- ✅ 确认代理服务器正在运行
+### 🏠 Cockpit
+Supply chain overview dashboard, including:
+- Key metrics monitoring
+- Real-time alerts
+- AI analysis assistant
 
-## 可用功能
+### 📈 Product Supply Optimization
+Intelligent demand forecasting and supply optimization, including:
+- **Demand Forecasting**: Supports multiple forecasting algorithms
+  - Simple Exponential Smoothing
+  - Holt Linear Exponential Smoothing
+  - Holt-Winters Triple Exponential Smoothing (seasonal forecasting)
+  - Prophet Algorithm (Meta-developed, suitable for complex seasonality)
+- **Order Analysis**: Order volume trends and cyclical analysis
+- **Product Kitting Analysis**: Gantt chart showing complete production mode
+- **AI Optimization Suggestions**: Intelligent optimization recommendations based on forecast results
 
-- 🏠 **驾驶舱** - 供应链整体概览
-- 📦 **库存优化** - 库存管理和优化分析
-- 📈 **产品供应优化** - 供应优化和预测
-- 🚚 **订单交付** - 交付管理
-- 👥 **供应商评估** - 供应商风险评估
-- ⚙️ **管理配置** - 系统配置管理
-- 🤖 **AI 助手** - 集成 Agent API 的智能对话助手
+### 📦 Inventory Optimization
+Inventory management and optimization analysis:
+- Inventory level monitoring
+- Safety stock calculation
+- AI inventory optimization assistant
 
-## Agent API 集成
+### 🚚 Order Delivery
+Delivery management:
+- Order status tracking
+- Delivery time analysis
+- AI delivery optimization assistant
 
-前端已完成与后端 Agent API 的完整对接：
+### 👥 Supplier Evaluation
+Supplier risk assessment:
+- Multi-dimensional evaluation system
+- Risk alerts
+- AI supplier analysis assistant
 
-### 核心特性
-- **流式对话**: 支持实时流式响应，提升用户体验
-- **会话管理**: 自动维护对话上下文和历史记录
-- **多 Agent 支持**: 根据不同页面使用对应的专业 Agent
-- **错误处理**: 完善的错误处理和重试机制
+### ⚙️ Management Configuration
+System configuration management:
+- Data mode switching
+- Knowledge network configuration
+- API configuration management
 
-### 支持的 Agent
-- **供应商评估助手** (`supplier_evaluation_agent`)
-- **库存优化助手** (`inventory_optimization_agent`)
-- **产品供应优化助手** (`product_supply_optimization_agent`)
-- **订单交付助手** (`order_delivery_agent`)
-- **供应链驾驶舱助手** (`supply_chain_cockpit_agent`)
+## Algorithm Services
 
-### API 端点
-- 对话接口: `POST /api/agent-app/v1/app/{app_key}/chat/completion`
-- 会话管理: `GET|POST|PUT|DELETE /api/agent-app/v1/app/{app_key}/conversations`
-- 调试接口: `POST /api/agent-app/v1/app/{app_key}/api/debug`
+### Demand Forecasting Algorithms
 
-## 数据模式说明 (Data Modes)
+The system supports 4 forecasting algorithms, selected based on data characteristics:
 
-系统支持两种数据处理模式，可通过右上角的切换开关（或管理配置页面）进行切换：
+| Algorithm | Use Case | Parameters | Implementation |
+|-----------|----------|------------|----------------|
+| **Simple Exponential Smoothing** | Stable data without trend or seasonality | α (smoothing coefficient) | Frontend |
+| **Holt Linear** | Data with trend, no seasonality | α (level), β (trend) | Frontend |
+| **Holt-Winters** | Data with trend and seasonality | α, β, γ (seasonal), season length | Frontend |
+| **Prophet** | Complex seasonality, long-term trends | Seasonality mode, changepoint sensitivity, etc. | Backend (preferred) / Frontend (fallback) |
 
-### 1. 通用模式 (`huida-legacy`)
-- **用途**: 展示完整的、经过验证的业务场景数据。
-- **数据源**: `src/data/mockData.ts` 结合基础 API 服务。
-- **场景**: 演示、演示开发和稳定性测试。
+### Prophet Algorithm Service
 
-### 2. 惠达供应链大脑模式 (`huida-new`)
-- **用途**: 对接最新、真实的惠达供应链 API 数据。
-- **数据源**: 真实的指标查询 API (`/proxy-metric/v1`)。
-- **场景**: 实际业务分析、指标下钻和实时预警。
+#### Architecture Design
 
-## 供应链知识网络配置
+```
+Frontend → forecastOperatorService → Prophet Backend API
+                                     ↓ (failure)
+                                 Holt-Winters Fallback
+```
 
-系统集成了 **供应链知识网络** 配置功能，支持根据不同场景切换本体模型：
-- **动态 ID 绑定**: 可在管理页面实时选择当前激活的 `knowledgeNetworkId`。
-- **模式联动**: 切换数据模式时，系统会自动推荐最适合该模式的知识网络（如大脑模式自动切换到 `d56v...`）。
-- **本体路由**: 所有的本体查询均通过 `ontologyApi` 动态构建路由，支持跨网络、跨环境调用。
+#### API Specification
 
-## 技术栈
+**Endpoint**: `POST /api/v1/forecast/prophet`
 
+**Request Example**:
+```json
+{
+  "product_id": "PROD-001",
+  "historical_data": [
+    {"month": "2024-01", "quantity": 100},
+    {"month": "2024-02", "quantity": 120}
+  ],
+  "forecast_periods": 12,
+  "parameters": {
+    "seasonality_mode": "multiplicative",
+    "yearly_seasonality": true,
+    "changepoint_prior_scale": 0.05,
+    "interval_width": 0.95,
+    "growth": "linear"
+  }
+}
+```
+
+**Response Example**:
+```json
+{
+  "product_id": "PROD-001",
+  "algorithm": "prophet",
+  "forecast_values": [125, 130, 135, ...],
+  "confidence_intervals": [
+    {"lower": 110, "upper": 140},
+    ...
+  ],
+  "metrics": {
+    "mape": 5.2,
+    "rmse": 12.5,
+    "mae": 10.3
+  },
+  "generated_at": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### Graceful Degradation
+
+When the Prophet backend service is unavailable:
+1. Frontend automatically detects API health status
+2. Falls back to built-in Holt-Winters algorithm
+3. Displays user notification: "Prophet forecast service temporarily unavailable, automatically switched to Holt-Winters algorithm"
+4. Ensures forecast functionality remains available
+
+## Data Modes
+
+The system supports two data processing modes, switchable via the toggle in the top-right corner (or management configuration page):
+
+### 1. General Mode (`huida-legacy`)
+- **Purpose**: Display complete, validated business scenario data
+- **Data Source**: `src/data/mockData.ts` combined with basic API services
+- **Use Case**: Demos, development, and stability testing
+
+### 2. Huida Supply Chain Brain Mode (`huida-new`)
+- **Purpose**: Connect to the latest, real Huida supply chain API data
+- **Data Source**: Real metric query API (`/proxy-metric/v1`)
+- **Use Case**: Actual business analysis, metric drill-down, and real-time alerts
+
+## Agent API Integration
+
+The frontend has complete integration with the backend Agent API:
+
+### Core Features
+- **Streaming Conversations**: Supports real-time streaming responses for better user experience
+- **Conversation Management**: Automatically maintains conversation context and history
+- **Multi-Agent Support**: Uses corresponding professional agents for different pages
+- **Error Handling**: Comprehensive error handling and retry mechanisms
+
+### Supported Agents
+- **Supplier Evaluation Assistant** (`supplier_evaluation_agent`)
+- **Inventory Optimization Assistant** (`inventory_optimization_agent`)
+- **Product Supply Optimization Assistant** (`product_supply_optimization_agent`)
+- **Order Delivery Assistant** (`order_delivery_agent`)
+- **Supply Chain Cockpit Assistant** (`supply_chain_cockpit_agent`)
+
+### API Endpoints
+- Conversation: `POST /api/agent-app/v1/app/{app_key}/chat/completion`
+- Session Management: `GET|POST|PUT|DELETE /api/agent-app/v1/app/{app_key}/conversations`
+- Debug: `POST /api/agent-app/v1/app/{app_key}/api/debug`
+
+## Supply Chain Knowledge Network Configuration
+
+The system integrates **Supply Chain Knowledge Network** configuration functionality, supporting ontology model switching for different scenarios:
+- **Dynamic ID Binding**: Can select the currently active `knowledgeNetworkId` in real-time on the management page
+- **Mode Linkage**: When switching data modes, the system automatically recommends the most suitable knowledge network for that mode
+- **Ontology Routing**: All ontology queries are dynamically routed through `ontologyApi`, supporting cross-network and cross-environment calls
+
+## Tech Stack
+
+### Frontend
 - React 19.2.0
 - TypeScript
 - Vite
 - Tailwind CSS v4
-- Lucide React (图标)
-- Recharts (图表)
-- Agent API 客户端 (自定义)
+- Lucide React (icons)
+- Recharts (charts)
+- Agent API Client (custom)
 
-## React Compiler
+### Backend Algorithm Service
+- Python 3.11+
+- FastAPI 0.109.0
+- Prophet 1.1.5 (Meta time series forecasting library)
+- Pandas 2.1.4
+- NumPy 1.26.3
+- Uvicorn (ASGI server)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Development Guide
 
-## Expanding the ESLint configuration
+### Environment Requirements
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+**Frontend**:
+- Node.js 16+
+- npm or yarn
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+**Backend Algorithm Service** (optional):
+- Python 3.11+
+- pip
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Project Structure
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── components/          # React components
+│   ├── product-supply-optimization/
+│   │   ├── ProductDemandForecastPanelNew.tsx  # Demand forecast main panel
+│   │   ├── AlgorithmParameterPanel.tsx        # Algorithm parameter configuration
+│   │   └── ProductSupplyOptimizationPage.tsx  # Page entry
+├── services/
+│   ├── forecastAlgorithmService.ts   # Frontend forecast algorithm implementation
+│   ├── forecastOperatorService.ts    # Forecast operator service (API integration)
+│   └── demandPlanningService.ts      # Demand planning service
+├── api/
+│   └── httpClient.ts                 # HTTP client
+└── config/
+    └── apiConfig.ts                  # API configuration
+
+backend/
+├── app/
+│   ├── main.py              # FastAPI application entry
+│   ├── models.py            # Pydantic data models
+│   └── prophet_service.py   # Prophet forecast core logic
+├── requirements.txt         # Python dependencies
+└── run.py                  # Startup script
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Adding New Forecasting Algorithms
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. **Frontend Algorithm** (JavaScript/TypeScript):
+   - Add algorithm implementation in `forecastAlgorithmService.ts`
+   - Add parameter configuration UI in `AlgorithmParameterPanel.tsx`
+   - Add calling logic in `ProductDemandForecastPanelNew.tsx`
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2. **Backend Algorithm** (Python):
+   - Define request/response models in `backend/app/models.py`
+   - Implement algorithm logic in `backend/app/prophet_service.py`
+   - Add API endpoint in `backend/app/main.py`
+   - Add frontend calling interface in `forecastOperatorService.ts`
+
+### Code Standards
+
+- Use TypeScript strict mode
+- Follow React Hooks best practices
+- Components use functional components + Hooks
+- API calls uniformly use `httpClient`
+- Error handling uses try-catch and user-friendly error messages
+
+### Build & Deploy
+
+```bash
+# Frontend build
+npm run build
+
+# Frontend preview
+npm run preview
+
+# Backend deployment
+cd backend
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker
 ```
+
+## Troubleshooting
+
+**Q: API request fails with connection error**
+- ✅ Check if proxy server is running (you should see proxy server log output)
+- ✅ Check if port 30777 is occupied
+- ✅ Confirm proxy server window has no errors
+
+**Q: Returns 401 Unauthorized**
+- ✅ Check if token is correctly configured in `src/config/apiConfig.ts`
+- ✅ Confirm token is not expired
+
+**Q: Returns 404 Not Found**
+- ✅ Check if API baseUrl configuration is correct
+- ✅ Confirm proxy server is running
+
+**Q: Prophet forecast unavailable**
+- ✅ Confirm backend algorithm service is started (`http://localhost:8000`)
+- ✅ System will automatically use Holt-Winters as fallback, does not affect basic functionality
+- ✅ Check frontend console, will display fallback notification
+
+## Related Documentation
+
+- [Product Supply Optimization Design](docs/product-supply-optimization-design.md)
+- [Product Supply Optimization Implementation](docs/product-supply-optimization-implementation.md)
+- [Prophet Algorithm Service README](backend/README.md)
+- [API Configuration Guide](src/config/README.md)
+
+## Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+
+## Support & Contact
+
+- **Issues**: [GitHub Issues](https://github.com/your-org/supply-chain-brain/issues)
+- **License**: [Apache License 2.0](LICENSE)
+
+---
+
+Built on the [DIP Platform](https://github.com/kweaver-ai/kweaver/) - An open-source ecosystem for building decision intelligence AI applications.
