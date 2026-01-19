@@ -12,38 +12,48 @@
 /**
  * API Configuration Type Enum
  */
-export enum ApiConfigType {
-    KNOWLEDGE_NETWORK = 'knowledge_network',
-    DATA_VIEW = 'data_view',
-    METRIC_MODEL = 'metric_model',
-    AGENT = 'agent',
-    WORKFLOW = 'workflow'
-}
+// Enums
+// ============================================================================
+
+/**
+ * API Configuration Type Enum
+ */
+export const ApiConfigType = {
+    KNOWLEDGE_NETWORK: 'knowledge_network',
+    DATA_VIEW: 'data_view',
+    METRIC_MODEL: 'metric_model',
+    AGENT: 'agent',
+    WORKFLOW: 'workflow'
+} as const;
+export type ApiConfigType = typeof ApiConfigType[keyof typeof ApiConfigType];
 
 /**
  * Workflow Trigger Type
  */
-export enum WorkflowTriggerType {
-    MANUAL = 'manual',
-    SCHEDULED = 'scheduled',
-    EVENT = 'event'
-}
+export const WorkflowTriggerType = {
+    MANUAL: 'manual',
+    SCHEDULED: 'scheduled',
+    EVENT: 'event'
+} as const;
+export type WorkflowTriggerType = typeof WorkflowTriggerType[keyof typeof WorkflowTriggerType];
 
 /**
  * Chat Mode for Agent
  */
-export enum AgentChatMode {
-    NORMAL = 'normal',
-    DEEP_THINKING = 'deep_thinking'
-}
+export const AgentChatMode = {
+    NORMAL: 'normal',
+    DEEP_THINKING: 'deep_thinking'
+} as const;
+export type AgentChatMode = typeof AgentChatMode[keyof typeof AgentChatMode];
 
 /**
  * Metric Type
  */
-export enum MetricType {
-    ATOMIC = 'atomic',
-    COMPLEX = 'complex'
-}
+export const MetricType = {
+    ATOMIC: 'atomic',
+    COMPLEX: 'complex'
+} as const;
+export type MetricType = typeof MetricType[keyof typeof MetricType];
 
 // ============================================================================
 // Base Configuration Interface
@@ -127,7 +137,7 @@ export interface RelationTypeMapping {
  * Knowledge Network Configuration
  */
 export interface KnowledgeNetworkConfig extends BaseApiConfig {
-    type: ApiConfigType.KNOWLEDGE_NETWORK;
+    type: typeof ApiConfigType.KNOWLEDGE_NETWORK;
 
     /** Knowledge Network ID */
     knowledgeNetworkId: string;
@@ -147,7 +157,7 @@ export interface KnowledgeNetworkConfig extends BaseApiConfig {
  * Data View Configuration
  */
 export interface DataViewConfig extends BaseApiConfig {
-    type: ApiConfigType.DATA_VIEW;
+    type: typeof ApiConfigType.DATA_VIEW;
 
     /** Data View ID */
     viewId: string;
@@ -176,7 +186,7 @@ export interface DataViewConfig extends BaseApiConfig {
  * Metric Model Configuration
  */
 export interface MetricModelConfig extends BaseApiConfig {
-    type: ApiConfigType.METRIC_MODEL;
+    type: typeof ApiConfigType.METRIC_MODEL;
 
     /** Metric Model ID */
     modelId: string;
@@ -211,7 +221,7 @@ export interface MetricModelConfig extends BaseApiConfig {
  * Agent Configuration
  */
 export interface AgentConfig extends BaseApiConfig {
-    type: ApiConfigType.AGENT;
+    type: typeof ApiConfigType.AGENT;
 
     /** Agent Key */
     agentKey: string;
@@ -249,7 +259,7 @@ export interface AgentConfig extends BaseApiConfig {
  * Workflow Configuration
  */
 export interface WorkflowConfig extends BaseApiConfig {
-    type: ApiConfigType.WORKFLOW;
+    type: typeof ApiConfigType.WORKFLOW;
 
     /** DAG ID */
     dagId: string;

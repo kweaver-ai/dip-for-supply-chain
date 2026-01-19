@@ -147,7 +147,7 @@ const MaterialInventoryPanel = ({ onNavigate }: Props) => {
     loading: stagnantMaterialLoading,
     error: stagnantMaterialError,
   } = useDimensionMetricData(
-    mode === 'mock' ? currentMetricIds.STAGNANT_MATERIALS : '',  // 只在Mock模式下查询
+    (mode as string) === 'mock' ? currentMetricIds.STAGNANT_MATERIALS : '',  // 只在Mock模式下查询
     ['item_name', 'warehouse_name'],  // 按物料名称和仓库名称分组
     { instant: true }
   );

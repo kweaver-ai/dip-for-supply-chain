@@ -385,6 +385,27 @@ const envDefaultKnId = envConfig.knowledgeNetworkId ||
 let currentKnowledgeNetworkId: string = getGlobalKnowledgeNetworkId(envDefaultKnId);
 
 // ============================================================================
+// Token Initialization (DIP Integration)
+// ============================================================================
+
+(function initializeTokenFromUrl() {
+  if (typeof window === 'undefined') return;
+
+  // Check for 'token' or 'access_token' in URL search params
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token') || params.get('access_token');
+
+  if (token) {
+    console.log('[API Config] Detected token in URL, initializing session...');
+    setAuthToken(token, false); // Store in sessionStorage
+
+    // Optional: Clean URL to remove sensitive token
+    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + window.location.hash;
+    window.history.replaceState({ path: newUrl }, '', newUrl);
+  }
+})();
+
+// ============================================================================
 // 配置管理器
 // ============================================================================
 
@@ -422,25 +443,25 @@ export function getApiConfig(): GlobalApiConfig {
  * 获取认证 Token
  */
 export function getAuthToken(): string {
-  // 优先从配置获取
+  // 1. 优先从 sessionStorage 获取（DIP 容器通常会注入或通过 URL 传递后存储在这里）
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    const sessionToken = window.sessionStorage.getItem('api_auth_token');
+    if (sessionToken) {
+      return sessionToken;
+    }
+  }
+
+  // 2. 其次从 localStorage 获取（如果实现了持久化登录）
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const localToken = window.localStorage.getItem('api_auth_token');
+    if (localToken) {
+      return localToken;
+    }
+  }
+
+  // 3. 最后使用配置中的 Token (主要用于本地开发或 fallback)
   if (currentConfig.auth.token) {
     return currentConfig.auth.token;
-  }
-
-  // 尝试从 sessionStorage 获取
-  if (typeof window !== 'undefined' && window.sessionStorage) {
-    const storedToken = window.sessionStorage.getItem('api_auth_token');
-    if (storedToken) {
-      return storedToken;
-    }
-  }
-
-  // 尝试从 localStorage 获取
-  if (typeof window !== 'undefined' && window.localStorage) {
-    const storedToken = window.localStorage.getItem('api_auth_token');
-    if (storedToken) {
-      return storedToken;
-    }
   }
 
   return '';

@@ -1,0 +1,8 @@
+namespace: anyshare
+name: supply-chain-brain
+alias: 供应链大脑 2.0
+version: 0.1.0
+category: Supply Chain
+port: 8751
+description: 供应链智能分析与协同平台
+key: 7f8a9b2c3d4e5f6a7b8c9d0e1f2a3b4c # Random 32-char key

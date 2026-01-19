@@ -63,7 +63,7 @@ const MaterialInventoryCharts = () => {
         items: stagnantMaterialItems,
         loading: stagnantLoading,
     } = useDimensionMetricData(
-        mode === 'mock' ? currentMetricIds.STAGNANT_MATERIALS : '',
+        (mode as string) === 'mock' ? currentMetricIds.STAGNANT_MATERIALS : '',
         ['item_name', 'warehouse_name'],
         { instant: true }
     );

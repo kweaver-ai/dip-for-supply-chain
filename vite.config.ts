@@ -1,13 +1,18 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import qiankun from 'vite-plugin-qiankun'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss()
+    tailwindcss(),
+    qiankun('supply-chain-brain', {
+      useDevMode: true
+    })
   ],
+  base: '/supply-chain-brain/',
   server: {
     port: 5173,
     host: '127.0.0.1',

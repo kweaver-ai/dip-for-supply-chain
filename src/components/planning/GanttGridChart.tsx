@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react';
-import type { GanttTask, TimeRange } from '../../types/ontology';
+import type { GanttTask, MaterialReadyGanttTask, TimeRange } from '../../types/ontology';
 import {
   calculateTimeRange,
   generateTimeColumns,
@@ -16,8 +16,8 @@ import {
 import { GanttTaskBar } from './GanttTaskBar';
 
 interface GanttGridChartProps {
-  tasks: GanttTask[];
-  onTaskHover?: (task: GanttTask, position: { x: number; y: number }) => void;
+  tasks: (GanttTask | MaterialReadyGanttTask)[];
+  onTaskHover?: (task: GanttTask | MaterialReadyGanttTask, position: { x: number; y: number }) => void;
   onTaskLeave?: () => void;
 }
 
@@ -75,7 +75,7 @@ export function GanttGridChart({ tasks, onTaskHover, onTaskLeave }: GanttGridCha
   const taskPositions = useMemo(
     () => {
       try {
-        return sortedTasks.map((task) => getTaskGridPosition(task, timeRange));
+        return sortedTasks.map((task) => getTaskGridPosition(task as any, timeRange));
       } catch (error) {
         console.error('Error calculating task positions:', error);
         return [];
@@ -88,7 +88,7 @@ export function GanttGridChart({ tasks, onTaskHover, onTaskLeave }: GanttGridCha
   const totalDays = Math.max(1, timeColumns.length); // Ensure at least 1 column
 
   // Handle task hover
-  const handleTaskHover = (task: GanttTask, e: React.MouseEvent) => {
+  const handleTaskHover = (task: GanttTask | MaterialReadyGanttTask, e: React.MouseEvent) => {
     if (onTaskHover) {
       const rect = e.currentTarget.getBoundingClientRect();
       onTaskHover(task, {

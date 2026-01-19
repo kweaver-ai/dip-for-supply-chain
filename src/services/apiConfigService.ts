@@ -49,15 +49,15 @@ class ApiConfigService {
 
         switch (type) {
             case ApiConfigType.KNOWLEDGE_NETWORK:
-                return all.knowledgeNetworks as T[];
+                return all.knowledgeNetworks as unknown as T[];
             case ApiConfigType.DATA_VIEW:
-                return all.dataViews as T[];
+                return all.dataViews as unknown as T[];
             case ApiConfigType.METRIC_MODEL:
-                return all.metricModels as T[];
+                return all.metricModels as unknown as T[];
             case ApiConfigType.AGENT:
-                return all.agents as T[];
+                return all.agents as unknown as T[];
             case ApiConfigType.WORKFLOW:
-                return all.workflows as T[];
+                return all.workflows as unknown as T[];
             default:
                 return [];
         }

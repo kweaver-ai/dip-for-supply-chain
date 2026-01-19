@@ -915,7 +915,7 @@ export interface GanttTask {
  * 齐套模式V2甘特任务（扩展GanttTask）
  * 支持倒排排程和库存就绪状态显示
  */
-export interface MaterialReadyGanttTask extends Omit<GanttTask, 'status'> {
+export interface MaterialReadyGanttTask extends Omit<GanttTask, 'status' | 'children'> {
   code: string;                     // 编码（产品编码/物料编码）
 
   // 状态属性
@@ -1252,3 +1252,31 @@ export interface DemandPlanningState {
   error: string | null;
 }
 
+
+/**
+ * Factory Production Plan
+ */
+export interface ProductionPlan {
+  order_number: string;
+  code: string;
+  quantity: number;
+  start_time: string;
+  end_time: string;
+  status: string;
+  priority?: number;
+  ordered?: number;
+}
+
+/**
+ * Inventory Information
+ */
+export interface Inventory {
+  material_code: string;
+  material_name?: string;
+  inventory_data: number;
+  safety_stock: number;
+  available_quantity?: number;
+  inventory_age?: number;
+  last_inbound_time?: string;
+  update_time?: string;
+}

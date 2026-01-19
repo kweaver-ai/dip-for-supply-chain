@@ -129,8 +129,8 @@ const InventoryView = ({ toggleCopilot }: Props) => {
     loading: productInventoryLoading,
   } = useDimensionMetricData(
     productInventoryMetricId,
-    mode === 'mock' ? productDimensionsToUse : [],
-    { instant: true, immediate: mode === 'mock' }
+    (mode as string) === 'mock' ? productDimensionsToUse : [],
+    { instant: true, immediate: (mode as string) === 'mock' }
   );
 
   const productsDataFromApi = useMemo(() => {
@@ -216,8 +216,8 @@ const InventoryView = ({ toggleCopilot }: Props) => {
     loading: materialInventoryLoading,
   } = useDimensionMetricData(
     materialInventoryMetricId,
-    (mode === 'mock' || mode === 'api') ? materialDimensionsToUse : [],
-    { instant: true, immediate: mode === 'mock' || mode === 'api' }
+    (mode as string) === 'mock' || (mode as string) === 'api' ? materialDimensionsToUse : [],
+    { instant: true, immediate: (mode as string) === 'mock' || (mode as string) === 'api' }
   );
 
   const materialsDataFromApi = useMemo(() => {

@@ -679,7 +679,7 @@ export async function loadAllBOMTrees(): Promise<ProductBOMTree[]> {
     let sampleCount = 0;
     for (const [code, inv] of inventoryMap) {
         if (sampleCount < 3 && inv.unit_price > 0) {
-            console.log(`[BOM服务] 库存金额样例 ${code}: ${inv.current_stock} × ¥${inv.unit_price} = ¥${(inv.current_stock * inv.unit_price).toFixed(2)}`);
+            console.log(`[BOM服务] 库存金额样例 ${code}: ${inv.current_stock}    price: ${(inv.unit_price ?? 0) * (inv.current_stock ?? 0)}`);
             sampleCount++;
         }
     }

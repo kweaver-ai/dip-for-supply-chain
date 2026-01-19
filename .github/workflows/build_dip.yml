@@ -1,0 +1,58 @@
+name: Build DIP Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Install Dependencies
+      run: |
+        npm install
+        pip install pyyaml jinja2
+
+    - name: Install Packaging Tools (Helm, Skopeo)
+      run: |
+        # Install Helm
+        curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+        
+        # Install Skopeo
+        sudo apt-get update
+        sudo apt-get install -y skopeo
+
+    - name: Build Application
+      run: npm run build
+
+    - name: Package DIP
+      run: |
+        # Make script executable
+        chmod +x buildkit/scripts/build_package.py
+        
+        # Run packaging script
+        # Note: Docker is available by default on ubuntu-latest runners
+        python buildkit/scripts/build_package.py --arch amd64
+
+    - name: Upload DIP Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: dip-package
+        path: buildkit/.cache/**/package/*.dip
+        if-no-files-found: error
