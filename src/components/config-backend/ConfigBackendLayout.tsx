@@ -1,240 +1,219 @@
-import { useState, useEffect } from 'react';
+/**
+ * Config Backend Layout
+ * 
+ * Main layout for the configuration backend interface.
+ * Provides sidebar navigation to switch between different configuration views.
+ */
+
+import { useState } from 'react';
 import {
-  Settings, UserCheck, Database, Users, Package, Warehouse,
-  ShoppingCart, Award, ChevronDown, ChevronRight, Factory, GitBranch,
-  Globe, Brain, TrendingUp, Bot, Workflow
+  GitBranch, Database, BarChart2, Bot, Workflow,
+  Settings, ArrowLeft, Layout, Menu, Key
 } from 'lucide-react';
-import GlobalObjectView from './GlobalObjectView';
-import UserManagementView from './UserManagementView';
-import EntityListPage from './EntityListPage';
+import { ApiConfigType, type AnyApiConfig } from '../../types/apiConfig';
+import { ApiConfigListView } from './ApiConfigListView';
+import { ApiConfigEditor } from './ApiConfigEditor';
 import KnowledgeGraphView from './KnowledgeGraphView';
-import ApiConfigListView from './ApiConfigListView';
-import ApiConfigEditor from './ApiConfigEditor';
 import GlobalSettingsView from './GlobalSettingsView';
-import type { EntityType } from '../../types/ontology';
-import type { ApiConfigType, AnyApiConfig } from '../../types/apiConfig';
-import { initializeEntityData } from '../../utils/entityConfigService';
-import { useDataMode } from '../../contexts/DataModeContext';
 
-type ConfigView = 'global-object' | 'knowledge-network' | 'knowledge-graph' | 'users' | 'global-settings' | 'api-config';
-type KnowledgeNetworkView = 'supplier' | 'material' | 'product' | 'warehouse' | 'order' | 'customer' | 'factory' | null;
-type ApiConfigView = 'knowledge-network-config' | 'data-view-config' | 'metric-model-config' | 'agent-config' | 'workflow-config' | null;
-
-interface Props {
+interface ConfigBackendLayoutProps {
   onBack: () => void;
 }
 
+type ConfigViewType =
+  | 'visual_graph'
+  | 'global_settings'
+  | ApiConfigType;
 
-/**
- * Map ApiConfigView to ApiConfigType
- */
-function getApiConfigType(view: ApiConfigView): ApiConfigType {
-  const mapping: Record<NonNullable<ApiConfigView>, ApiConfigType> = {
-    'knowledge-network-config': 'knowledge_network' as ApiConfigType,
-    'data-view-config': 'data_view' as ApiConfigType,
-    'metric-model-config': 'metric_model' as ApiConfigType,
-    'agent-config': 'agent' as ApiConfigType,
-    'workflow-config': 'workflow' as ApiConfigType
-  };
-  return mapping[view!];
-}
+const MENU_ITEMS = [
+  {
+    id: 'visual_graph',
+    label: '知识网络可视化',
+    icon: GitBranch,
+    group: '可视化'
+  },
+  {
+    id: 'global_settings',
+    label: '全局设置',
+    icon: Key,
+    group: '系统配置'
+  },
+  {
+    id: ApiConfigType.KNOWLEDGE_NETWORK,
+    label: '知识网络配置',
+    icon: Settings,
+    group: '系统配置'
+  },
+  {
+    id: ApiConfigType.DATA_VIEW,
+    label: '数据视图',
+    icon: Database,
+    group: '系统配置'
+  },
+  {
+    id: ApiConfigType.METRIC_MODEL,
+    label: '指标模型',
+    icon: BarChart2,
+    group: '系统配置'
+  },
+  {
+    id: ApiConfigType.AGENT,
+    label: 'Agent 配置',
+    icon: Bot,
+    group: '系统配置'
+  },
+  {
+    id: ApiConfigType.WORKFLOW,
+    label: '工作流配置',
+    icon: Workflow,
+    group: '系统配置'
+  }
+];
 
-const ConfigBackendLayout = ({ onBack }: Props) => {
-  const [currentView, setCurrentView] = useState<ConfigView>('knowledge-graph');
-  const [knowledgeNetworkView, setKnowledgeNetworkView] = useState<KnowledgeNetworkView>(null);
-  const [isKnowledgeNetworkExpanded, setIsKnowledgeNetworkExpanded] = useState(false);
-  const [apiConfigView, setApiConfigView] = useState<ApiConfigView>(null);
-  const [isApiConfigExpanded, setIsApiConfigExpanded] = useState(false);
+export default function ConfigBackendLayout({ onBack }: ConfigBackendLayoutProps) {
+  const [activeView, setActiveView] = useState<ConfigViewType>('visual_graph');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Editor State
   const [editingConfig, setEditingConfig] = useState<AnyApiConfig | null>(null);
   const [isCreatingConfig, setIsCreatingConfig] = useState(false);
+  const [editorConfigType, setEditorConfigType] = useState<ApiConfigType>(ApiConfigType.KNOWLEDGE_NETWORK);
 
-  // Ensure data is initialized when config backend is opened
-  useEffect(() => {
-    initializeEntityData();
-  }, []);
+  const handleCreate = (type: ApiConfigType) => {
+    setEditorConfigType(type);
+    setEditingConfig(null);
+    setIsCreatingConfig(true);
+  };
 
-  const sidebarMenu = [
-    { id: 'global-settings' as const, label: '全局设置', icon: Globe },
-    { id: 'knowledge-graph' as const, label: '业务知识网络预览', icon: GitBranch },
-    {
-      id: 'api-config' as const,
-      label: 'API 配置管理',
-      icon: Settings,
-      children: [
-        { id: 'knowledge-network-config' as const, label: '知识网络配置', icon: GitBranch },
-        { id: 'data-view-config' as const, label: '数据视图配置', icon: Database },
-        { id: 'metric-model-config' as const, label: '指标模型配置', icon: TrendingUp },
-        { id: 'agent-config' as const, label: 'Agent 配置', icon: Bot },
-        { id: 'workflow-config' as const, label: '工作流配置', icon: Workflow },
-      ]
-    },
-    {
-      id: 'knowledge-network' as const,
-      label: '供应链知识网络',
-      icon: Database,
-      children: [
-        { id: 'supplier' as const, label: '供应商对象', icon: Users },
-        { id: 'material' as const, label: '物料对象', icon: Package },
-        { id: 'product' as const, label: '产品对象', icon: Package },
-        { id: 'factory' as const, label: '工厂对象', icon: Factory },
-        { id: 'warehouse' as const, label: '库存对象', icon: Warehouse },
-        { id: 'order' as const, label: '订单对象', icon: ShoppingCart },
-        { id: 'customer' as const, label: '客户对象', icon: Award },
-      ]
-    },
-    { id: 'users' as const, label: '用户管理', icon: UserCheck },
-  ];
+  const handleEdit = (config: AnyApiConfig) => {
+    setEditorConfigType(config.type);
+    setEditingConfig(config);
+    setIsCreatingConfig(true);
+  };
+
+  const handleSave = (config: AnyApiConfig) => {
+    // Note: The actual saving to backend/service logic would be handled by the Editor 
+    // calling the service directly or passing the object back here.
+    // ApiConfigEditor's onSave prop expects a callback that receives the config.
+    // Since ApiConfigEditor handles validation, here we just need to close the modal 
+    // and trigger a list refresh. 
+    // However, ApiConfigListView loads data on mount/update. 
+    // We can force a refresh by key or by passing a refresh trigger using context/state,
+    // but ApiConfigEditor usually calls the service itself? 
+    // Checking ApiConfigEditor logic: It calls `onSave` passing the form data. 
+    // It does NOT seem to call `apiConfigService.saveConfig` internally inside `handleSave`.
+    // Wait, let me re-read ApiConfigEditor.tsx.
+
+    // Checked ApiConfigEditor.tsx: 
+    // const handleSave = () => { ... onSave(formData); }
+    // It does NOT call apiConfigService.saveConfig. 
+    // So distinct layer of responsibility: Editor validates and prepares object, Parent (Layout) saves it.
+
+    import('../../services/apiConfigService').then(({ apiConfigService }) => {
+      apiConfigService.saveConfig(config);
+      setIsCreatingConfig(false);
+      setEditingConfig(null);
+      // We rely on ApiConfigListView re-rendering or fetching data. 
+      // Ideally ApiConfigListView should subscribe to changes or we pass a refresh key.
+      // For now, simple state update will trigger re-render of this component, 
+      // but ApiConfigListView uses internal state seeded from service.
+      // We might need to force ApiConfigListView to reload.
+      // We'll increment a version key for the active view to force remount/reload.
+      setViewVersion(v => v + 1);
+    });
+  };
+
+  const [viewVersion, setViewVersion] = useState(0);
 
   return (
-    <div className="flex h-full bg-slate-50">
-      <div className="w-64 bg-white border-r border-slate-200">
-        <div className="p-4 border-b border-slate-200">
+    <div className="flex h-full bg-slate-100">
+      {/* Sidebar */}
+      <div
+        className={`${isSidebarOpen ? 'w-64' : 'w-16'
+          } bg-slate-900 text-white transition-all duration-300 flex flex-col shadow-lg z-20`}
+      >
+        {/* Sidebar Header */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
+          {isSidebarOpen && (
+            <div className="flex items-center gap-2 font-bold text-lg">
+              <Layout className="text-indigo-400" size={24} />
+              <span>配置中心</span>
+            </div>
+          )}
           <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
           >
-            <Settings size={20} />
-            <span className="font-semibold">配置后台</span>
+            <Menu size={20} />
           </button>
         </div>
-        <nav className="p-2 space-y-1">
-          {sidebarMenu.map(item => {
-            if ('children' in item) {
-              // Handle expandable menus
-              const isKnowledgeNetwork = item.id === 'knowledge-network';
-              const isApiConfig = item.id === 'api-config';
-              const isExpanded = isKnowledgeNetwork ? isKnowledgeNetworkExpanded : isApiConfigExpanded;
-              const isActive = currentView === item.id;
+
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto py-4">
+          <div className="space-y-1 px-2">
+            {MENU_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeView === item.id;
 
               return (
-                <div key={item.id}>
-                  <button
-                    onClick={() => {
-                      if (isKnowledgeNetwork) {
-                        setIsKnowledgeNetworkExpanded(!isKnowledgeNetworkExpanded);
-                        if (!isKnowledgeNetworkExpanded) {
-                          setCurrentView('knowledge-network');
-                          setKnowledgeNetworkView('supplier');
-                        }
-                      } else if (isApiConfig) {
-                        setIsApiConfigExpanded(!isApiConfigExpanded);
-                        if (!isApiConfigExpanded) {
-                          setCurrentView('api-config');
-                          setApiConfigView('knowledge-network-config');
-                        }
-                      }
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${isActive
-                      ? 'bg-indigo-50 text-indigo-600'
-                      : 'text-slate-600 hover:bg-slate-50'
-                      }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <item.icon size={16} />
-                      {item.label}
-                    </div>
-                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                  </button>
-                  {isExpanded && item.children && (
-                    <div className="ml-6 mt-1 space-y-1">
-                      {item.children.map(child => {
-                        const isChildActive = isKnowledgeNetwork
-                          ? knowledgeNetworkView === child.id
-                          : apiConfigView === child.id;
-
-                        return (
-                          <button
-                            key={child.id}
-                            onClick={() => {
-                              if (isKnowledgeNetwork) {
-                                setKnowledgeNetworkView(child.id as KnowledgeNetworkView);
-                                setCurrentView('knowledge-network');
-                              } else if (isApiConfig) {
-                                setApiConfigView(child.id as ApiConfigView);
-                                setCurrentView('api-config');
-                              }
-                            }}
-                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${isChildActive
-                              ? 'bg-indigo-50 text-indigo-600'
-                              : 'text-slate-600 hover:bg-slate-50'
-                              }`}
-                          >
-                            <child.icon size={14} />
-                            {child.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <button
+                  key={item.id}
+                  onClick={() => setActiveView(item.id as ConfigViewType)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  title={!isSidebarOpen ? item.label : undefined}
+                >
+                  <Icon size={20} />
+                  {isSidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                </button>
               );
-            }
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setCurrentView(item.id);
-                  setKnowledgeNetworkView(null);
-                  setApiConfigView(null);
-                }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${currentView === item.id
-                  ? 'bg-indigo-50 text-indigo-600'
-                  : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-              >
-                <item.icon size={16} />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+            })}
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="p-4 border-t border-slate-700">
+          <button
+            onClick={onBack}
+            className={`w-full flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors ${!isSidebarOpen ? 'justify-center' : ''
+              }`}
+          >
+            <ArrowLeft size={20} />
+            {isSidebarOpen && <span className="text-sm font-medium">返回应用</span>}
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        {currentView === 'global-settings' && <GlobalSettingsView />}
-        {currentView === 'global-object' && <GlobalObjectView />}
-        {currentView === 'knowledge-graph' && <KnowledgeGraphView />}
-        {currentView === 'knowledge-network' && knowledgeNetworkView && (
-          <EntityListPage entityType={knowledgeNetworkView as EntityType} />
-        )}
-        {currentView === 'knowledge-network' && !knowledgeNetworkView && (
-          <div className="flex items-center justify-center h-full text-slate-400">
-            请从左侧选择一个对象类型
-          </div>
-        )}
-        {currentView === 'api-config' && apiConfigView && (
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {activeView === 'visual_graph' ? (
+          <KnowledgeGraphView />
+        ) : activeView === 'global_settings' ? (
+          <GlobalSettingsView />
+        ) : (
           <ApiConfigListView
-            configType={getApiConfigType(apiConfigView)}
-            onEdit={(config) => setEditingConfig(config)}
-            onCreate={() => setIsCreatingConfig(true)}
+            key={`${activeView}-${viewVersion}`} // Force reload on save/switch
+            configType={activeView as ApiConfigType}
+            onCreate={() => handleCreate(activeView as ApiConfigType)}
+            onEdit={handleEdit}
           />
         )}
-        {currentView === 'api-config' && !apiConfigView && (
-          <div className="flex items-center justify-center h-full text-slate-400">
-            请从左侧选择一个配置类型
-          </div>
-        )}
-        {currentView === 'users' && <UserManagementView />}
       </div>
 
-      {/* API Config Editor Modal */}
-      {(editingConfig || isCreatingConfig) && apiConfigView && (
+      {/* Editor Modal */}
+      {(isCreatingConfig || editingConfig) && (
         <ApiConfigEditor
-          configType={getApiConfigType(apiConfigView)}
+          configType={editorConfigType}
           config={editingConfig}
-          onSave={(config) => {
-            setEditingConfig(null);
-            setIsCreatingConfig(false);
-            // Trigger refresh by re-rendering the list view
-          }}
+          onSave={handleSave}
           onCancel={() => {
-            setEditingConfig(null);
             setIsCreatingConfig(false);
+            setEditingConfig(null);
           }}
         />
       )}
     </div>
   );
-};
-
-export default ConfigBackendLayout;
+}

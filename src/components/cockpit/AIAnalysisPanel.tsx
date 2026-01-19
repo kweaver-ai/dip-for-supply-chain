@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Sparkles, Loader2, Download, RefreshCw } from 'lucide-react';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 import ReactMarkdown from 'react-markdown';
@@ -29,7 +29,7 @@ function getWorkflowDagId(): string {
 
 
 const AIAnalysisPanel = () => {
-    const { mode } = useDataMode();
+
 
     // ============ AI 分析报告状态 ============
     const [brainModeAnalysis, setBrainModeAnalysis] = useState<string[]>([]);
@@ -39,190 +39,188 @@ const AIAnalysisPanel = () => {
     const [fetchTrigger, setFetchTrigger] = useState(0); // Used to trigger refetch
 
     useEffect(() => {
-        if (mode === 'api') {
-            // 创建 AbortController 用于取消请求
-            const abortController = new AbortController();
-            let isActive = true;
+        // 创建 AbortController 用于取消请求
+        const abortController = new AbortController();
+        let isActive = true;
 
-            const fetchAnalysis = async () => {
-                try {
-                    setBrainModeLoading(true);
+        const fetchAnalysis = async () => {
+            try {
+                setBrainModeLoading(true);
 
-                    // 1. Get Authentication Headers
-                    const headers = await import('../../config/apiConfig').then(m => m.getAuthHeaders());
+                // 1. Get Authentication Headers
+                const headers = await import('../../config/apiConfig').then(m => m.getAuthHeaders());
 
-                    // 2. Fetch latest successful execution
-                    const DAG_ID = getWorkflowDagId();
-                    const listUrl = `/proxy-agent-service/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=20`;
-                    console.log('[AIAnalysisPanel] Fetching DAG results from:', listUrl);
+                // 2. Fetch latest successful execution
+                const DAG_ID = getWorkflowDagId();
+                const listUrl = `/proxy-agent-service/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=20`;
+                console.log('[AIAnalysisPanel] Fetching DAG results from:', listUrl);
 
-                    const listResponse = await fetch(listUrl, {
+                const listResponse = await fetch(listUrl, {
+                    headers,
+                    signal: abortController.signal  // 添加取消信号
+                });
+
+                // 检查组件是否仍然挂载
+                if (!isActive) return;
+
+                if (!listResponse.ok) {
+                    // Try to get error details from response body
+                    let errorDetail = '';
+                    try {
+                        const errorBody = await listResponse.text();
+                        errorDetail = errorBody;
+                        console.error('[AIAnalysisPanel] Error response body:', errorBody);
+                    } catch (e) {
+                        console.error('[AIAnalysisPanel] Could not read error response body');
+                    }
+
+                    console.error('[AIAnalysisPanel] List response not OK:', {
+                        status: listResponse.status,
+                        statusText: listResponse.statusText,
+                        url: listUrl,
+                        headers: Object.fromEntries(listResponse.headers.entries()),
+                        errorDetail: errorDetail.substring(0, 500)
+                    });
+                    throw new Error(`Failed to fetch DAG results: ${listResponse.status} - ${errorDetail.substring(0, 100)}`);
+                }
+                const listData = await listResponse.json();
+
+                if (!isActive) return;  // 再次检查
+
+                console.log('[AIAnalysisPanel] DAG results list:', listData);
+
+                // Find first successful run
+                let successfulRun = null;
+                const runs = Array.isArray(listData) ? listData : (listData.data || listData.results || []);
+                console.log('[AIAnalysisPanel] Parsed runs array:', runs.length, 'items');
+
+                for (const run of runs) {
+                    // Check for success status (could be 'success', 'completed', etc.)
+                    const status = run.status || run.state || '';
+                    if (status.toLowerCase() === 'success' || status.toLowerCase() === 'completed') {
+                        successfulRun = run;
+                        break;
+                    }
+                }
+
+                if (!successfulRun && runs.length > 0) {
+                    // Fallback: use first run if no explicit success status found
+                    console.log('[AIAnalysisPanel] No explicit success status found, using first run');
+                    successfulRun = runs[0];
+                }
+
+                if (successfulRun) {
+                    const resultId = successfulRun.id || successfulRun.result_id;
+                    console.log('[AIAnalysisPanel] Using result ID:', resultId);
+
+                    // 3. Fetch execution details
+                    const detailUrl = `/proxy-agent-service/automation/v2/dag/${DAG_ID}/result/${resultId}`;
+                    console.log('[AIAnalysisPanel] Fetching execution details from:', detailUrl);
+
+                    const detailResponse = await fetch(detailUrl, {
                         headers,
                         signal: abortController.signal  // 添加取消信号
                     });
 
-                    // 检查组件是否仍然挂载
-                    if (!isActive) return;
+                    if (!isActive) return;  // 检查组件状态
 
-                    if (!listResponse.ok) {
-                        // Try to get error details from response body
-                        let errorDetail = '';
-                        try {
-                            const errorBody = await listResponse.text();
-                            errorDetail = errorBody;
-                            console.error('[AIAnalysisPanel] Error response body:', errorBody);
-                        } catch (e) {
-                            console.error('[AIAnalysisPanel] Could not read error response body');
-                        }
-
-                        console.error('[AIAnalysisPanel] List response not OK:', {
-                            status: listResponse.status,
-                            statusText: listResponse.statusText,
-                            url: listUrl,
-                            headers: Object.fromEntries(listResponse.headers.entries()),
-                            errorDetail: errorDetail.substring(0, 500)
-                        });
-                        throw new Error(`Failed to fetch DAG results: ${listResponse.status} - ${errorDetail.substring(0, 100)}`);
+                    if (!detailResponse.ok) {
+                        console.error('[AIAnalysisPanel] Detail response not OK:', detailResponse.status);
+                        throw new Error(`Failed to fetch DAG detail: ${detailResponse.status}`);
                     }
-                    const listData = await listResponse.json();
+                    const detailData = await detailResponse.json();
 
                     if (!isActive) return;  // 再次检查
 
-                    console.log('[AIAnalysisPanel] DAG results list:', listData);
+                    console.log('[AIAnalysisPanel] Execution detail:', detailData);
 
-                    // Find first successful run
-                    let successfulRun = null;
-                    const runs = Array.isArray(listData) ? listData : (listData.data || listData.results || []);
-                    console.log('[AIAnalysisPanel] Parsed runs array:', runs.length, 'items');
-
-                    for (const run of runs) {
-                        // Check for success status (could be 'success', 'completed', etc.)
-                        const status = run.status || run.state || '';
-                        if (status.toLowerCase() === 'success' || status.toLowerCase() === 'completed') {
-                            successfulRun = run;
-                            break;
-                        }
+                    // 4. Get last node output
+                    // Try multiple possible structures
+                    let nodes = [];
+                    if (Array.isArray(detailData)) {
+                        nodes = detailData;
+                    } else if (detailData.data && Array.isArray(detailData.data)) {
+                        nodes = detailData.data;
+                    } else if (detailData.nodes && Array.isArray(detailData.nodes)) {
+                        nodes = detailData.nodes;
+                    } else if (detailData.tasks && Array.isArray(detailData.tasks)) {
+                        nodes = detailData.tasks;
+                    } else if (detailData.results && Array.isArray(detailData.results)) {
+                        nodes = detailData.results;
                     }
 
-                    if (!successfulRun && runs.length > 0) {
-                        // Fallback: use first run if no explicit success status found
-                        console.log('[AIAnalysisPanel] No explicit success status found, using first run');
-                        successfulRun = runs[0];
-                    }
+                    console.log('[AIAnalysisPanel] Parsed nodes:', nodes.length, 'nodes');
 
-                    if (successfulRun) {
-                        const resultId = successfulRun.id || successfulRun.result_id;
-                        console.log('[AIAnalysisPanel] Using result ID:', resultId);
+                    if (nodes.length > 0) {
+                        const lastNode = nodes[nodes.length - 1];
+                        console.log('[AIAnalysisPanel] Last node:', lastNode);
 
-                        // 3. Fetch execution details
-                        const detailUrl = `/proxy-agent-service/automation/v2/dag/${DAG_ID}/result/${resultId}`;
-                        console.log('[AIAnalysisPanel] Fetching execution details from:', detailUrl);
+                        const output = lastNode.outputs || lastNode.output || lastNode.result || {};
+                        console.log('[AIAnalysisPanel] Last node output:', output);
 
-                        const detailResponse = await fetch(detailUrl, {
-                            headers,
-                            signal: abortController.signal  // 添加取消信号
-                        });
-
-                        if (!isActive) return;  // 检查组件状态
-
-                        if (!detailResponse.ok) {
-                            console.error('[AIAnalysisPanel] Detail response not OK:', detailResponse.status);
-                            throw new Error(`Failed to fetch DAG detail: ${detailResponse.status}`);
-                        }
-                        const detailData = await detailResponse.json();
-
-                        if (!isActive) return;  // 再次检查
-
-                        console.log('[AIAnalysisPanel] Execution detail:', detailData);
-
-                        // 4. Get last node output
-                        // Try multiple possible structures
-                        let nodes = [];
-                        if (Array.isArray(detailData)) {
-                            nodes = detailData;
-                        } else if (detailData.data && Array.isArray(detailData.data)) {
-                            nodes = detailData.data;
-                        } else if (detailData.nodes && Array.isArray(detailData.nodes)) {
-                            nodes = detailData.nodes;
-                        } else if (detailData.tasks && Array.isArray(detailData.tasks)) {
-                            nodes = detailData.tasks;
-                        } else if (detailData.results && Array.isArray(detailData.results)) {
-                            nodes = detailData.results;
-                        }
-
-                        console.log('[AIAnalysisPanel] Parsed nodes:', nodes.length, 'nodes');
-
-                        if (nodes.length > 0) {
-                            const lastNode = nodes[nodes.length - 1];
-                            console.log('[AIAnalysisPanel] Last node:', lastNode);
-
-                            const output = lastNode.outputs || lastNode.output || lastNode.result || {};
-                            console.log('[AIAnalysisPanel] Last node output:', output);
-
-                            // Try to find a text message in output
-                            let analysisText = '';
-                            if (typeof output === 'string') {
-                                analysisText = output;
-                            } else if (output.text) {
-                                analysisText = output.text;
-                            } else if (output.result) {
-                                analysisText = typeof output.result === 'string' ? output.result : JSON.stringify(output.result);
-                            } else if (output.answer) {
-                                analysisText = output.answer;
-                            } else if (output.content) {
-                                analysisText = output.content;
-                            } else if (output.message) {
-                                analysisText = output.message;
-                            } else {
-                                analysisText = JSON.stringify(output, null, 2);
-                            }
-
-                            console.log('[AIAnalysisPanel] Extracted analysis text:', analysisText.substring(0, 200) + '...');
-
-                            // Store raw markdown for rendering
-                            setBrainModeMarkdown(analysisText);
-                            // Split by newline for Word export
-                            setBrainModeAnalysis(analysisText.split('\n').filter(line => line.trim().length > 0));
+                        // Try to find a text message in output
+                        let analysisText = '';
+                        if (typeof output === 'string') {
+                            analysisText = output;
+                        } else if (output.text) {
+                            analysisText = output.text;
+                        } else if (output.result) {
+                            analysisText = typeof output.result === 'string' ? output.result : JSON.stringify(output.result);
+                        } else if (output.answer) {
+                            analysisText = output.answer;
+                        } else if (output.content) {
+                            analysisText = output.content;
+                        } else if (output.message) {
+                            analysisText = output.message;
                         } else {
-                            console.warn('[AIAnalysisPanel] No nodes found in execution detail');
-                            setBrainModeMarkdown('未找到工作流节点数据');
-                            setBrainModeAnalysis(['未找到工作流节点数据']);
+                            analysisText = JSON.stringify(output, null, 2);
                         }
+
+                        console.log('[AIAnalysisPanel] Extracted analysis text:', analysisText.substring(0, 200) + '...');
+
+                        // Store raw markdown for rendering
+                        setBrainModeMarkdown(analysisText);
+                        // Split by newline for Word export
+                        setBrainModeAnalysis(analysisText.split('\n').filter(line => line.trim().length > 0));
                     } else {
-                        console.warn('[AIAnalysisPanel] No successful runs found');
-                        setBrainModeMarkdown('暂无成功的工作流运行记录');
-                        setBrainModeAnalysis(['暂无成功的工作流运行记录']);
+                        console.warn('[AIAnalysisPanel] No nodes found in execution detail');
+                        setBrainModeMarkdown('未找到工作流节点数据');
+                        setBrainModeAnalysis(['未找到工作流节点数据']);
                     }
-                } catch (err) {
-                    // 忽略 AbortError (请求被取消)
-                    if (err instanceof Error && err.name === 'AbortError') {
-                        console.log('[AIAnalysisPanel] Request aborted');
-                        return;
-                    }
-
-                    if (!isActive) return;
-
-                    console.error('[AIAnalysisPanel] Failed to fetch AI analysis:', err);
-                    const errorMsg = `AI 分析服务暂时不可用: ${err instanceof Error ? err.message : '未知错误'}`;
-                    setBrainModeMarkdown(errorMsg);
-                    setBrainModeAnalysis([errorMsg]);
-                } finally {
-                    if (isActive) {
-                        setBrainModeLoading(false);
-                    }
+                } else {
+                    console.warn('[AIAnalysisPanel] No successful runs found');
+                    setBrainModeMarkdown('暂无成功的工作流运行记录');
+                    setBrainModeAnalysis(['暂无成功的工作流运行记录']);
                 }
-            };
+            } catch (err) {
+                // 忽略 AbortError (请求被取消)
+                if (err instanceof Error && err.name === 'AbortError') {
+                    console.log('[AIAnalysisPanel] Request aborted');
+                    return;
+                }
 
-            fetchAnalysis();
+                if (!isActive) return;
 
-            // 清理函数: 取消未完成的请求
-            return () => {
-                isActive = false;
-                abortController.abort();
-                console.log('[AIAnalysisPanel] Cleanup: aborted pending requests');
-            };
-        }
-    }, [mode, fetchTrigger]);
+                console.error('[AIAnalysisPanel] Failed to fetch AI analysis:', err);
+                const errorMsg = `AI 分析服务暂时不可用: ${err instanceof Error ? err.message : '未知错误'}`;
+                setBrainModeMarkdown(errorMsg);
+                setBrainModeAnalysis([errorMsg]);
+            } finally {
+                if (isActive) {
+                    setBrainModeLoading(false);
+                }
+            }
+        };
+
+        fetchAnalysis();
+
+        // 清理函数: 取消未完成的请求
+        return () => {
+            isActive = false;
+            abortController.abort();
+            console.log('[AIAnalysisPanel] Cleanup: aborted pending requests');
+        };
+    }, [fetchTrigger]);
 
     // Trigger workflow and refresh
     const DAG_ID = getWorkflowDagId();
@@ -388,21 +386,19 @@ const AIAnalysisPanel = () => {
                     <Sparkles className="text-indigo-500" /> AI 分析与建议
                 </h3>
                 <div className="flex items-center gap-2">
-                    {mode === 'api' && (
-                        <button
-                            onClick={regenerateAnalysis}
-                            disabled={isTriggering}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="重新生成 AI 分析报告"
-                        >
-                            {isTriggering ? (
-                                <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                                <RefreshCw size={14} />
-                            )}
-                            {isTriggering ? '生成中...' : '重新生成'}
-                        </button>
-                    )}
+                    <button
+                        onClick={regenerateAnalysis}
+                        disabled={isTriggering}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="重新生成 AI 分析报告"
+                    >
+                        {isTriggering ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <RefreshCw size={14} />
+                        )}
+                        {isTriggering ? '生成中...' : '重新生成'}
+                    </button>
                     {hasContent && (
                         <button
                             onClick={exportToWord}
@@ -436,10 +432,8 @@ const AIAnalysisPanel = () => {
                                 <Loader2 className="animate-spin" size={14} />
                                 正在生成智能分析报告...
                             </span>
-                        ) : mode === 'api' ? (
-                            <span>暂无AI分析报告，请点击"重新生成"按钮生成报告</span>
                         ) : (
-                            <span>请切换到"惠达供应链大脑"模式查看AI分析报告</span>
+                            <span>暂无AI分析报告，请点击"重新生成"按钮生成报告</span>
                         )}
                     </div>
                 ) : null}

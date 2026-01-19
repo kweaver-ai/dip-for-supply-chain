@@ -62,7 +62,7 @@ export interface GlobalApiConfig {
 // ============================================================================
 
 // 默认 Token（作为 fallback）
-const DEFAULT_API_TOKEN = 'ory_at_oF4wm7MPv3HJ49Qb6j-Ax4Zy2zb7z66mpzDUltXgF70.1wWoxSqdzqzhsXVU2MA7x6tMuy_wklZZe37Vjioho1s';
+const DEFAULT_API_TOKEN = 'ory_at_eUV5LdKEBbhNINlTSLTlnVlApKMQo3zpYF4zzoK5vWk.hU03-W389ctdeEPcUC-DcbnwoTp6fZkni-vE7V88-Es';
 
 // 动态获取 Token：优先从 globalSettingsService 读取，否则使用默认值
 function getGlobalApiToken(): string {

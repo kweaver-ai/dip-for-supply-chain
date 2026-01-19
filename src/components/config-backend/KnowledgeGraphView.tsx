@@ -19,7 +19,7 @@ import 'reactflow/dist/style.css';
 import { ontologyApi } from '../../api';
 import type { ObjectType, EdgeType } from '../../api';
 import { Home, Factory, Warehouse, Users, Package, Box, GitBranch, ShoppingCart, Truck, MapPin } from 'lucide-react';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 // Icon mapping for common entity types
 const ICON_MAP: Record<string, any> = {
@@ -123,52 +123,48 @@ const nodeTypes = {};
 const edgeTypes = {};
 
 const KnowledgeGraphView = () => {
-  const { mode } = useDataMode();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load data from API
-  useEffect(() => {
-    async function loadKnowledgeNetwork() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        console.log(`[KnowledgeGraphView] Fetching data for mode: ${mode}`);
-        // Force reload of ID in case it changed
-        const currentId = ontologyApi.getKnowledgeNetwork().then(kn => console.log('Current KN ID:', kn.id));
-
-        const network = await ontologyApi.getKnowledgeNetwork();
-
-        console.log('[KnowledgeGraphView] Loaded object types:', network.object_types.length);
-        console.log('[KnowledgeGraphView] Loaded edge types:', network.edge_types.length);
-
-        // Convert to React Flow format
-        const flowNodes = network.object_types.map((obj, idx) =>
-          objectTypeToNode(obj, idx, network.object_types.length)
-        );
-        const flowEdges = network.edge_types.map(edgeTypeToEdge);
-
-        setNodes(flowNodes);
-        setEdges(flowEdges);
-
-      } catch (err) {
-        console.error('[KnowledgeGraphView] Failed to load knowledge network:', err);
-        setError(err instanceof Error ? err.message : '加载知识网络失败');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadKnowledgeNetwork();
-  }, [mode, setNodes, setEdges]); // Add mode dependency
-
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
+
+  const loadKnowledgeNetwork = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Fetch object types (nodes) and relation definitions (edges metadata)
+      const objectTypes = await ontologyApi.getObjectTypes();
+      const relationTypes = await ontologyApi.getEdgeTypes(); // Assuming getEdgeTypes/getRelationTypes
+
+      if (!objectTypes) {
+        throw new Error('Failed to load object types');
+      }
+
+      const newNodes = objectTypes.map((t, i) => objectTypeToNode(t, i, objectTypes.length));
+
+      // Note: Relation definitions are not instances, so we might not have edges yet 
+      // unless we fetch relation *instances* or if this graph is just showing the ontology schema
+      // Based on previous code "EdgeType", it seems to be schema.
+      const newEdges = (relationTypes || []).map(edgeTypeToEdge);
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+    } catch (err) {
+      console.error('Failed to load knowledge graph:', err);
+      setError(err instanceof Error ? err.message : '获取数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadKnowledgeNetwork();
+  }, []);
 
   // Loading state
   if (loading) {
@@ -190,7 +186,7 @@ const KnowledgeGraphView = () => {
           <div className="text-red-600 font-bold mb-2">❌ 加载失败</div>
           <p className="text-sm text-red-700">{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => loadKnowledgeNetwork()}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
           >
             重新加载
@@ -216,7 +212,7 @@ const KnowledgeGraphView = () => {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => loadKnowledgeNetwork()}
               className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-200"
             >
               🔄 刷新数据

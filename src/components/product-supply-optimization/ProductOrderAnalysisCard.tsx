@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Loader2, AlertCircle, ChevronRight, CheckCircle2, Clock, Package } from 'lucide-react';
 import { loadSalesOrderEvents } from '../../services/ontologyDataService';
 import { loadOrderInfo } from '../../services/productSupplyCalculator';
-import { useDataMode } from '../../contexts/DataModeContext';
-import { OrderAnalysisModal } from './OrderAnalysisModal';
 import { metricModelApi, createLastDaysRange } from '../../api';
+import { OrderAnalysisModal } from './OrderAnalysisModal';
 
 interface Props {
   productId: string;
@@ -29,12 +28,12 @@ const SUPPORTED_PRODUCTS = ['T01-000055', 'T01-000167', 'T01-000173'];
  * 订单分析卡片 - 根据 FR-001.5 要求
  * 显示总签约数量、已交付数量、待交付数量、完成率、当前库存
  */
-export const ProductOrderAnalysisCard: React.FC<Props> = ({ 
-  productId, 
+export const ProductOrderAnalysisCard: React.FC<Props> = ({
+  productId,
   currentInventory,
   inventoryUnit = '单位'
 }) => {
-  const { mode } = useDataMode();
+
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<OrderAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,15 +51,9 @@ export const ProductOrderAnalysisCard: React.FC<Props> = ({
       try {
         let orders: any[] = [];
 
-        if (mode === 'api') {
-          // 大脑模式：使用 productSupplyCalculator 的 loadOrderInfo
-          const orderInfo = await loadOrderInfo();
-          orders = orderInfo.filter(o => o.product_code === productId);
-        } else {
-          // Mock模式：使用 ontologyDataService 的 loadSalesOrderEvents
-          const salesOrders = await loadSalesOrderEvents();
-          orders = salesOrders.filter(o => o.product_id === productId);
-        }
+        // 大脑模式：使用 productSupplyCalculator 的 loadOrderInfo
+        const orderInfo = await loadOrderInfo();
+        orders = orderInfo.filter(o => o.product_code === productId);
 
         if (orders.length === 0) {
           setAnalysis({
@@ -79,18 +72,8 @@ export const ProductOrderAnalysisCard: React.FC<Props> = ({
 
         orders.forEach(order => {
           // 大脑模式使用 signing_quantity/shipping_quantity
-          // Mock模式使用 quantity 字段
-          if (mode === 'api') {
-            totalSigning += order.signing_quantity || 0;
-            totalShipping += order.shipping_quantity || 0;
-          } else {
-            const qty = parseInt(order.quantity) || 0;
-            totalSigning += qty;
-            // Mock模式假设已确认订单都已交付
-            if (order.order_status === '已发货') {
-              totalShipping += qty;
-            }
-          }
+          totalSigning += order.signing_quantity || 0;
+          totalShipping += order.shipping_quantity || 0;
         });
 
         const pending = Math.max(0, totalSigning - totalShipping);
@@ -112,12 +95,12 @@ export const ProductOrderAnalysisCard: React.FC<Props> = ({
     };
 
     fetchOrderAnalysis();
-  }, [productId, mode]);
+  }, [productId]);
 
   // 获取当前库存（如果支持API模式）
   useEffect(() => {
-    const shouldUseApi = mode === 'api' && SUPPORTED_PRODUCTS.includes(productId);
-    
+    const shouldUseApi = SUPPORTED_PRODUCTS.includes(productId);
+
     if (!shouldUseApi) {
       setInventoryCount(null);
       return;
@@ -144,7 +127,7 @@ export const ProductOrderAnalysisCard: React.FC<Props> = ({
         if (result.datas && result.datas.length > 0) {
           for (const series of result.datas) {
             const materialCode = series.labels?.material_code || '';
-            
+
             if (materialCode === productId) {
               const availableQty = series.labels?.available_quantity;
               if (availableQty) {
@@ -173,7 +156,7 @@ export const ProductOrderAnalysisCard: React.FC<Props> = ({
     };
 
     fetchInventory();
-  }, [productId, mode]);
+  }, [productId]);
 
   // 确定显示的库存值：优先使用API数据，其次使用props，最后使用0
   const displayInventory = inventoryCount !== null ? inventoryCount : (currentInventory ?? 0);
@@ -264,11 +247,10 @@ export const ProductOrderAnalysisCard: React.FC<Props> = ({
                 </div>
               </div>
               {/* Completion Rate */}
-              <div className={`text-sm font-bold px-2 py-0.5 rounded-lg ${
-                analysis.completionRate >= 80 ? 'bg-emerald-100 text-emerald-700' :
+              <div className={`text-sm font-bold px-2 py-0.5 rounded-lg ${analysis.completionRate >= 80 ? 'bg-emerald-100 text-emerald-700' :
                 analysis.completionRate >= 50 ? 'bg-amber-100 text-amber-700' :
-                'bg-red-100 text-red-700'
-              }`}>
+                  'bg-red-100 text-red-700'
+                }`}>
                 {analysis.completionRate.toFixed(1)}%
               </div>
             </div>
@@ -276,11 +258,10 @@ export const ProductOrderAnalysisCard: React.FC<Props> = ({
             {/* Progress Bar */}
             <div className="w-full bg-slate-200/50 h-1.5 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  analysis.completionRate >= 80 ? 'bg-emerald-500' :
+                className={`h-full rounded-full transition-all duration-500 ${analysis.completionRate >= 80 ? 'bg-emerald-500' :
                   analysis.completionRate >= 50 ? 'bg-amber-500' :
-                  'bg-red-500'
-                }`}
+                    'bg-red-500'
+                  }`}
                 style={{ width: `${analysis.completionRate}%` }}
               />
             </div>
@@ -297,3 +278,4 @@ export const ProductOrderAnalysisCard: React.FC<Props> = ({
     </>
   );
 };
+

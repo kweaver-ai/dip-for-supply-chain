@@ -21,18 +21,8 @@ import {
   calculateMaterialLogicRules,
   calculateOrderLogicRules
 } from './logicRuleService';
-import {
-  loadProductEntities,
-  loadInventoryEvents,
-  loadBOMEvents,
-  loadSupplierEntities,
-  loadMonthlySalesByProduct,
-  loadMaterialProcurementEvents,
-  loadSupplierPerformanceScores,
-  loadSalesOrderEvents,
-  loadAlternativeSuppliers,
-  loadMaterialEntities
-} from '../services/ontologyDataService';
+// NOTE: ontologyDataService has been removed (CSV data sources deleted)
+// The populateEntityConfigs function below is disabled until API-based data loading is implemented
 // Import additional types needed for local storage
 import type {
   Product, Supplier, Order, Material, MaterialStock,
@@ -467,10 +457,20 @@ export const getRoleById = (roleId: string): Role | null => {
 
 /**
  * Populate entity configurations from mock data
+ * 
+ * NOTE: This function is currently DISABLED because ontologyDataService (CSV data sources) has been removed.
+ * To restore functionality, implement API-based data loading.
+ * 
  * This function should be called after recreateAllMockDataRecords() to ensure
  * data consistency between in-memory data and entityConfigs Map.
  */
 export const populateEntityConfigs = async (): Promise<void> => {
+  console.warn('[EntityConfigService] populateEntityConfigs is disabled - CSV data sources removed');
+  console.warn('[EntityConfigService] To restore, implement API-based data loading');
+  return;
+
+  /* DISABLED CODE - requires ontologyDataService
+  // Original implementation commented out below:
   // Clear existing entityConfigs to avoid stale data
   entityConfigs.clear();
 
@@ -634,6 +634,7 @@ export const populateEntityConfigs = async (): Promise<void> => {
   } catch (error) {
     console.error('Failed to populate entity configs from Ontology CSVs:', error);
   }
+  */ // END DISABLED CODE
 
   console.log('=== Populating Entity Configurations ===');
 

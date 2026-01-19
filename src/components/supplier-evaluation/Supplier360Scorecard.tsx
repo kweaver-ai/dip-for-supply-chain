@@ -17,7 +17,7 @@ import RiskBadge from './RiskBadge';
 import SupplierSelector from './SupplierSelector';
 import type { Supplier360Scorecard as Supplier360ScorecardType } from '../../types/ontology';
 import type { LegalRisk, RiskLevel } from '../../types/ontology';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 interface Supplier360ScorecardProps {
   supplierId?: string | null;
@@ -32,8 +32,7 @@ const Supplier360Scorecard = ({
   onSwitchSupplier,
   onSourcing,
 }: Supplier360ScorecardProps) => {
-  // 获取当前数据模式
-  const { mode } = useDataMode();
+
 
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(supplierId || null);
   const [legalRisks, setLegalRisks] = useState<LegalRisk[]>([]);
@@ -68,16 +67,14 @@ const Supplier360Scorecard = ({
       setLoading(true);
       try {
         // 大脑模式：使用惠达供应链数据
-        if (mode === 'api') {
-          const hdScorecard = await loadHDSupplierScorecard(currentSupplierId);
-          if (hdScorecard) {
-            console.log('✅ Loaded HD scorecard for', hdScorecard.supplierName);
-            setScorecard(hdScorecard);
-            return;
-          }
-          // 如果HD数据找不到，继续尝试Mock数据
-          console.warn('HD scorecard not found, falling back to mock data');
+        const hdScorecard = await loadHDSupplierScorecard(currentSupplierId);
+        if (hdScorecard) {
+          console.log('✅ Loaded HD scorecard for', hdScorecard.supplierName);
+          setScorecard(hdScorecard);
+          return;
         }
+        // 如果HD数据找不到，继续尝试Mock数据
+        console.warn('HD scorecard not found, falling back to mock data');
 
         // Mock模式：使用原有数据
         const [supplierPerformances, supplierEntities] = await Promise.all([
@@ -185,7 +182,7 @@ const Supplier360Scorecard = ({
     };
 
     loadScorecardData();
-  }, [currentSupplierId, mode]); // 添加mode依赖
+  }, [currentSupplierId]);
 
   // Load legal risks when supplier changes
   useEffect(() => {

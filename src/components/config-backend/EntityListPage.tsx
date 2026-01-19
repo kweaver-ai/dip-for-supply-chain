@@ -6,7 +6,7 @@ import type { EntityType, EntityConfig } from '../../types/ontology';
 import RightPanel from './RightPanel';
 import { materialStocksData } from '../../utils/entityConfigService';
 import { calculateProductLogicRules, calculateMaterialLogicRules, calculateOrderLogicRules } from '../../utils/logicRuleService';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 interface Props {
   entityType: EntityType;
@@ -23,7 +23,7 @@ const EntityListPage = ({ entityType }: Props) => {
   const itemsPerPage = 10;
 
   // Get global data mode (for display indicator only)
-  const { mode, isApiMode } = useDataMode();
+  // const { mode, isApiMode } = useDataMode();
 
   // Fetch entities - always call API (httpClient will use the correct config based on mode)
   useEffect(() => {
@@ -33,7 +33,7 @@ const EntityListPage = ({ entityType }: Props) => {
         setError(null);
 
         // Always fetch from API - httpClient automatically selects the right config
-        console.log(`[EntityListPage] Fetching ${entityType} (mode: ${mode})...`);
+        console.log(`[EntityListPage] Fetching ${entityType}...`);
         const data = await fetchEntitiesByType(entityType);
         setEntities(data);
         console.log(`[EntityListPage] Successfully loaded ${data.length} ${entityType}`);
@@ -47,7 +47,7 @@ const EntityListPage = ({ entityType }: Props) => {
     }
 
     loadEntities();
-  }, [entityType, mode]);
+  }, [entityType]);
 
   // Memoize calculated logic rules for all entities to improve performance
   const entitiesWithCalculatedRules = useMemo(() => {
@@ -214,13 +214,10 @@ const EntityListPage = ({ entityType }: Props) => {
             <div className="flex items-center gap-2">
               {/* Data source indicator */}
               <div
-                className={`px-3 py-1.5 text-xs rounded-lg font-medium ${isApiMode
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border border-transparent'
-                  : 'bg-yellow-100 text-yellow-700 border border-yellow-300'
-                  }`}
-                title={isApiMode ? '当前使用惠达供应链大脑API数据' : '当前使用Mock演示数据'}
+                className="px-3 py-1.5 text-xs rounded-lg font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white border border-transparent"
+                title="当前使用惠达供应链大脑API数据"
               >
-                {isApiMode ? '🌐 惠达供应链大脑' : '💾 Mock数据'}
+                🌐 惠达供应链大脑
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />

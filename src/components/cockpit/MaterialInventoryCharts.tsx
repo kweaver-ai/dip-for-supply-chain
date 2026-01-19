@@ -9,19 +9,12 @@ import { useMemo } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getMaterialInventorySummary } from '../../utils/cockpitDataService';
 import { useDimensionMetricData, useMetricData, latestValueTransform } from '../../hooks/useMetricData';
-import { useDataMode } from '../../contexts/DataModeContext';
 import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 
 // 指标模型 ID 配置
 const METRIC_IDS = {
-    mock: {
-        TOTAL_MATERIAL_STOCK: 'd516uvdg5lk40hvh48d0',
-        STAGNANT_MATERIALS: 'd517hidg5lk40hvh48e0',
-    },
-    api: {
-        TOTAL_MATERIAL_STOCK: 'd58je8lg5lk40hvh48n0',
-        STAGNANT_MATERIALS: 'd58jomlg5lk40hvh48o0',
-    }
+    TOTAL_MATERIAL_STOCK: 'd58je8lg5lk40hvh48n0',
+    STAGNANT_MATERIALS: 'd58jomlg5lk40hvh48o0',
 };
 
 const COLORS = {
@@ -30,22 +23,17 @@ const COLORS = {
 };
 
 const MaterialInventoryCharts = () => {
-    const { mode } = useDataMode();
-    // 只在组件挂载时计算一次（API模式下不加载CSV数据）
+    // 只在组件挂载时计算一次
     const summary = useMemo(() => {
-        if (mode === 'api') {
-            return {
-                totalTypes: 0,
-                totalStock: 0,
-                top10ByStock: [],
-                stagnantCount: 0,
-                stagnantPercentage: 0,
-                stagnantDetails: [],
-            };
-        }
-        return getMaterialInventorySummary();
-    }, [mode]);
-    const currentMetricIds = METRIC_IDS[mode];
+        return {
+            totalTypes: 0,
+            totalStock: 0,
+            top10ByStock: [] as any[],
+            stagnantCount: 0,
+            stagnantPercentage: 0,
+            stagnantDetails: [] as any[],
+        };
+    }, []);
 
     // 获取物料库存排名数据 - 只获取TOP10
     const {
@@ -53,17 +41,17 @@ const MaterialInventoryCharts = () => {
         loading: stockRankingLoading,
         error: stockRankingError,
     } = useDimensionMetricData(
-        currentMetricIds.TOTAL_MATERIAL_STOCK,
-        mode === 'api' ? ['material_name', 'inventory_data'] : ['item_name'],
+        METRIC_IDS.TOTAL_MATERIAL_STOCK,
+        ['material_name', 'inventory_data'],
         { instant: true }
     );
 
-    // 获取呆滞物料数据（仅Mock模式）
+    // 获取呆滞物料数据
     const {
         items: stagnantMaterialItems,
         loading: stagnantLoading,
     } = useDimensionMetricData(
-        (mode as string) === 'mock' ? currentMetricIds.STAGNANT_MATERIALS : '',
+        METRIC_IDS.STAGNANT_MATERIALS,
         ['item_name', 'warehouse_name'],
         { instant: true }
     );
@@ -73,29 +61,18 @@ const MaterialInventoryCharts = () => {
         value: totalMaterialStockFromApi,
         loading: totalMaterialStockLoading,
     } = useMetricData(
-        mode === 'api' ? currentMetricIds.TOTAL_MATERIAL_STOCK : '',
+        METRIC_IDS.TOTAL_MATERIAL_STOCK,
         {
             instant: true,
             transform: latestValueTransform,
         }
     );
 
-    // 计算总库存量 - 与 MaterialInventoryPanel 保持一致
+    // 计算总库存量
     const totalMaterialStock = useMemo(() => {
-        if (mode === 'api') {
-            // 大脑模式：直接使用API返回的总量
-            return totalMaterialStockFromApi ?? summary.totalStock;
-        } else {
-            // Mock模式：通过维度数据求和
-            if (stockRankingLoading) {
-                return summary.totalStock;
-            }
-            if (stockRankingError || materialStockRankingItems.length === 0) {
-                return summary.totalStock;
-            }
-            return materialStockRankingItems.reduce((sum, item) => sum + (item.value ?? 0), 0);
-        }
-    }, [mode, totalMaterialStockFromApi, materialStockRankingItems, stockRankingLoading, stockRankingError, summary.totalStock]);
+        // 大脑模式：直接使用API返回的总量
+        return totalMaterialStockFromApi ?? summary.totalStock;
+    }, [totalMaterialStockFromApi, summary.totalStock]);
 
     // 库存TOP10柱状图数据 - 优化：直接取前10
     const top10StockData = useMemo(() => {
@@ -121,7 +98,6 @@ const MaterialInventoryCharts = () => {
 
     // 呆滞物料数据 - 只取TOP10
     const stagnantMaterials = useMemo(() => {
-        if (mode === 'api') return [];
         return stagnantMaterialItems
             .filter(item => (item.value ?? 0) > 115)
             .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
@@ -132,20 +108,16 @@ const MaterialInventoryCharts = () => {
                 age: item.value ?? 0,
                 warehouse: item.labels.warehouse_name || '未知仓库',
             }));
-    }, [mode, stagnantMaterialItems]);
+    }, [stagnantMaterialItems]);
 
     // 呆滞物料数量
-    const stagnantCount = mode === 'api' ? 0 : stagnantMaterials.length;
+    const stagnantCount = stagnantMaterials.length;
     const hasStagnantMaterials = stagnantCount > 0;
 
-    // 物料种类数量 - API模式下从维度数据获取
+    // 物料种类数量
     const totalMaterialTypes = useMemo(() => {
-        if (mode === 'api') {
-            // API模式：物料种类数量 = 维度数据的条数
-            return materialStockRankingItems.length;
-        }
-        return summary.totalTypes;
-    }, [mode, materialStockRankingItems.length, summary.totalTypes]);
+        return materialStockRankingItems.length;
+    }, [materialStockRankingItems.length]);
 
     // 库存状态分布
     const stockDistribution = useMemo(() => {
@@ -279,15 +251,7 @@ const MaterialInventoryCharts = () => {
                     {stagnantLoading && <Loader2 className="animate-spin text-slate-400 ml-2" size={14} />}
                 </h4>
 
-                {mode === 'api' ? (
-                    // API模式：暂无数据
-                    <div className="flex items-center justify-center h-32 text-slate-500">
-                        <div className="text-center">
-                            <CheckCircle className="text-green-400 mx-auto mb-2" size={32} />
-                            <p>当前模式下暂无呆滞物料数据</p>
-                        </div>
-                    </div>
-                ) : hasStagnantMaterials ? (
+                {hasStagnantMaterials ? (
                     // 有呆滞物料：显示柱状图
                     <div className="h-48">
                         <ResponsiveContainer width="100%" height="100%">

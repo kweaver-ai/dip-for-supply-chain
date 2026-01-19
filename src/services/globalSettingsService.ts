@@ -7,7 +7,7 @@
 import type { GlobalSettings, GlobalSettingsValidationError } from '../types/globalSettings';
 
 const STORAGE_KEY = 'supply_chain_global_settings';
-const DEFAULT_TOKEN = 'ory_at_0kLE7s2M3WNO-BB3H3aFZICSyth6fHFVC9RvJ_mfd4k.W_IaAez2Jqkat_JaZCMYiFvl4gq2uRi7F9_-QXwoaGQ';
+const DEFAULT_TOKEN = 'ory_at_eUV5LdKEBbhNINlTSLTlnVlApKMQo3zpYF4zzoK5vWk.hU03-W389ctdeEPcUC-DcbnwoTp6fZkni-vE7V88-Es';
 const DEFAULT_KN_ID = 'd56v1l69olk4bpa66uv0'; // Default for huida-new environment
 
 class GlobalSettingsService {
@@ -49,19 +49,31 @@ class GlobalSettingsService {
 
     /**
      * Get API Token
+     * Prioritizes localStorage.api_auth_token for consistency with apiConfig.ts
      */
     getApiToken(): string {
+        // Priority 1: Read from api_auth_token (same key as apiConfig.getAuthToken())
+        const apiToken = localStorage.getItem('api_auth_token');
+        if (apiToken) {
+            return apiToken;
+        }
+
+        // Priority 2: Fallback to settings
         const settings = this.loadSettings();
         return settings.apiToken;
     }
 
     /**
      * Update API Token
+     * Syncs to both settings and api_auth_token key
      */
     updateApiToken(token: string): void {
         const settings = this.loadSettings();
         settings.apiToken = token;
         this.saveSettings(settings);
+
+        // Sync to api_auth_token (the key that apiConfig.getAuthToken() reads)
+        localStorage.setItem('api_auth_token', token);
     }
 
 

@@ -11,7 +11,7 @@
 import { useState, useEffect } from 'react';
 import { getSuppliersByPurchaseAmount } from '../../services/supplierService';
 import type { Supplier } from '../../types/ontology';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 import { loadHDSupplierList } from '../../services/hdSupplierDataLoader';
 
 interface SupplierSelectorProps {
@@ -23,8 +23,7 @@ const SupplierSelector = ({
   selectedSupplierId,
   onSupplierChange,
 }: SupplierSelectorProps) => {
-  // 获取当前数据模式
-  const { mode } = useDataMode();
+
 
   const [suppliers, setSuppliers] = useState<Array<Supplier & { annualPurchaseAmount: number }>>([]);
   const [loading, setLoading] = useState(true);
@@ -35,23 +34,18 @@ const SupplierSelector = ({
       try {
         let data: Array<any> = [];
 
-        if (mode === 'api') {
-          // 大脑模式：加载惠达供应商
-          const hdSuppliers = await loadHDSupplierList();
-          data = hdSuppliers.map(s => ({
-            ...s,
-            annualPurchaseAmount: 0 // HD数据中此字段仅用于排序，列表展示时已有排序
-          })) as any;
-        } else {
-          // Mock模式
-          data = await getSuppliersByPurchaseAmount();
-        }
+        // 大脑模式：加载惠达供应商
+        const hdSuppliers = await loadHDSupplierList();
+        data = hdSuppliers.map(s => ({
+          ...s,
+          annualPurchaseAmount: 0 // HD数据中此字段仅用于排序，列表展示时已有排序
+        })) as any;
 
         // Remove duplicates by supplierId
         const uniqueSuppliers = Array.from(
           new Map(data.map(s => [s.supplierId, s])).values()
         );
-        console.log(`SupplierSelector loaded (${mode}):`, uniqueSuppliers.length, 'suppliers');
+        console.log(`SupplierSelector loaded:`, uniqueSuppliers.length, 'suppliers');
         setSuppliers(uniqueSuppliers);
       } catch (error) {
         console.error('Failed to load suppliers:', error);
@@ -62,7 +56,7 @@ const SupplierSelector = ({
     };
 
     loadSuppliers();
-  }, [mode]); // 添加mode依赖
+  }, []);
 
   if (loading) {
     return (

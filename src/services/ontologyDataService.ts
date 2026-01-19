@@ -1,422 +1,360 @@
 /**
  * Ontology Data Service
- * Loads and caches CSV data from datasource/finaldata/ontology
+ * 
+ * Provides data loading from the HD Supply Chain Knowledge Network via API.
+ * All functions now use ontologyApi.queryObjectInstances() instead of CSV files.
  */
 
-import { loadCSV } from '../utils/csvParser';
+import { ontologyApi } from '../api';
+import type { QueryCondition } from '../api/ontologyApi';
 
-// Base path for ontology data files
-const ONTOLOGY_DATA_PATH = '/datasource/finaldata/ontology';
+// ============================================================================
+// Object Type ID Constants (from mpsDataService.ts)
+// ============================================================================
 
-// Type definitions for ontology entities
-export interface ProductEntity {
-  product_id: string;
-  product_code: string;
-  product_name: string;
-  product_type: string;
-  main_unit: string;
-  created_date: string;
-  status: string;
+// Object Type IDs (from mpsDataService.ts)
+// ============================================================================
+
+const OBJECT_TYPE_IDS = {
+    PRODUCT: 'd56v4ue9olk4bpa66v00',           // 产品对象类型
+    SUPPLIER: 'd5700je9olk4bpa66vkg',          // 供应商对象类型 (Confirmed)
+    MATERIAL: 'd56voju9olk4bpa66vcg',          // 物料对象类型
+    BOM: 'd56vqtm9olk4bpa66vfg',              // 产品BOM对象类型
+    INVENTORY: 'd56vcuu9olk4bpa66v3g',         // 库存对象类型
+    SALES_ORDER: 'd56vh169olk4bpa66v80',       // 销售订单对象类型
+    SUPPLIER_PERFORMANCE: 'd5700000000000000', // 供应商绩效对象类型 (需确认)
+    PROCUREMENT_EVENT: 'd5700000000000001',    // 采购事件对象类型 (需确认)
+} as const;
+
+// ============================================================================
+// In-memory cache
+// ============================================================================
+
+interface CacheEntry<T> {
+    data: T;
+    timestamp: number;
 }
 
-export interface InventoryEvent {
-  inventory_id: string;
-  snapshot_month: string;
-  item_type: string;
-  item_id: string;
-  item_code: string;
-  item_name: string;
-  warehouse_id: string;
-  warehouse_name: string;
-  batch_number: string;
-  quantity: string;
-  unit_price: string;
-  total_price: string;
-  earliest_storage_date: string;
-  max_storage_age: string;
-  storage_reason: string;
-  storage_note: string;
-  consumption_path: string;
-  created_date: string;
-  status: string;
-}
+const cache = new Map<string, CacheEntry<any>>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-export interface BOMEvent {
-  bom_id: string;
-  bom_version: string;
-  parent_type: string;
-  parent_id: string;
-  parent_code: string;
-  child_type: string;
-  child_id: string;
-  child_code: string;
-  child_name: string;
-  relationship_type: string;
-  sequence: string;
-  line_number: string;
-  quantity: string;
-  unit: string;
-  child_quantity: string;
-  child_unit: string;
-  base_quantity: string;
-  effective_date: string;
-  expiry_date: string;
-  bom_category: string;
-  assembly_set: string;
-  issue_method: string;
-  scrap_rate: string;
-  created_by: string;
-  created_date: string;
-  status: string;
-}
+function getCached<T>(key: string): T | null {
+    const entry = cache.get(key);
+    if (!entry) return null;
 
-export interface SupplierEntity {
-  supplier_id: string;
-  supplier_code: string;
-  supplier_name: string;
-  supplier_type: string;
-  supplier_tier: string;
-  country: string;
-  city: string;
-  contact_person: string;
-  contact_phone: string;
-  contact_email: string;
-  cooperation_start_date: string;
-  supplier_rating: string;
-  status: string;
-}
-
-export interface MonthlySalesByProduct {
-  product_id: string;
-  product_name: string;
-  month: string;
-  quantity: string;
-}
-
-export interface MaterialProcurementEvent {
-  procurement_id: string;
-  procurement_code: string;
-  material_id: string;
-  material_code: string;
-  material_name: string;
-  supplier_id: string;
-  supplier_name: string;
-  quantity: string;
-  unit: string;
-  unit_price: string;
-  total_amount: string;
-  order_date: string;
-  planned_arrival_date: string;
-  actual_arrival_date?: string;
-  warehouse_id: string;
-  warehouse_name: string;
-  buyer: string;
-  procurement_type: string;
-  payment_term: string;
-  delivery_term: string;
-  quality_status?: string;
-  created_date: string;
-  status: string;
-}
-
-export interface SupplierPerformanceScore {
-  supplier_id: string;
-  supplier_name: string;
-  evaluation_month: string;
-  overall_score: string;
-  quality_score: string;
-  delivery_score: string;
-  price_score: string;
-  service_score: string;
-  otif_rate: string;
-  defect_rate: string;
-  response_time_hours: string;
-  total_orders: string;
-  on_time_orders: string;
-  quality_issues: string;
-  evaluator: string;
-  evaluation_date: string;
-  risk_level: string;
-  remarks?: string;
-}
-
-export interface SalesOrderEvent {
-  sales_order_id: string;
-  sales_order_number: string;
-  document_date: string;
-  customer_id: string;
-  customer_name: string;
-  line_number: string;
-  product_id: string;
-  product_code: string;
-  product_name: string;
-  quantity: string;
-  unit: string;
-  standard_price: string;
-  discount_rate: string;
-  actual_price: string;
-  subtotal_amount: string;
-  tax_amount: string;
-  total_amount: string;
-  order_status: string;
-  document_status: string;
-  transaction_type: string;
-  sales_department: string;
-  salesperson: string;
-  planned_delivery_date: string;
-  is_urgent: string;
-  contract_number?: string;
-  project_name?: string;
-  end_customer?: string;
-  quotation_number?: string;
-  notes?: string;
-  created_date: string;
-  status: string;
-}
-
-export interface MaterialEntity {
-  material_id: string;
-  material_code: string;
-  material_name: string;
-  material_type: string;
-  unit: string;
-  is_virtual: string;
-  is_assembly: string;
-  created_date: string;
-  status: string;
-}
-
-export interface AlternativeSupplierCSV {
-  material_code: string;
-  material_name: string;
-  primary_supplier_id: string;
-  primary_supplier_name: string;
-  alternative_supplier_id: string;
-  alternative_supplier_name: string;
-  similarity_score: string;
-  recommendation_reason: string;
-  quality_comparison: string;
-  delivery_comparison: string;
-  price_comparison: string;
-  risk_level: string;
-  availability: string;
-  notes: string;
-}
-
-// Cache for loaded data
-let cachedProductEntities: ProductEntity[] | null = null;
-let cachedInventoryEvents: InventoryEvent[] | null = null;
-let cachedBOMEvents: BOMEvent[] | null = null;
-let cachedSupplierEntities: SupplierEntity[] | null = null;
-let cachedMonthlySales: MonthlySalesByProduct[] | null = null;
-let cachedMaterialProcurements: MaterialProcurementEvent[] | null = null;
-let cachedSupplierPerformances: SupplierPerformanceScore[] | null = null;
-let cachedSalesOrders: SalesOrderEvent[] | null = null;
-let cachedMaterialEntities: MaterialEntity[] | null = null;
-let cachedAlternativeSuppliers: AlternativeSupplierCSV[] | null = null;
-
-/**
- * Load product entities from CSV
- */
-export async function loadProductEntities(forceReload = false): Promise<ProductEntity[]> {
-  if (cachedProductEntities && !forceReload) {
-    return cachedProductEntities;
-  }
-
-  try {
-    const data = await loadCSV<ProductEntity>(`${ONTOLOGY_DATA_PATH}/product_entity.csv`);
-    cachedProductEntities = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load product entities:', error);
-    return [];
-  }
-}
-
-/**
- * Load inventory events from CSV
- */
-export async function loadInventoryEvents(forceReload = false): Promise<InventoryEvent[]> {
-  if (cachedInventoryEvents && !forceReload) {
-    return cachedInventoryEvents;
-  }
-
-  try {
-    const data = await loadCSV<InventoryEvent>(`${ONTOLOGY_DATA_PATH}/inventory_event.csv`);
-    cachedInventoryEvents = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load inventory events:', error);
-    return [];
-  }
-}
-
-/**
- * Load BOM events from CSV
- */
-export async function loadBOMEvents(forceReload = false): Promise<BOMEvent[]> {
-  if (cachedBOMEvents && !forceReload) {
-    return cachedBOMEvents;
-  }
-
-  try {
-    const data = await loadCSV<BOMEvent>(`${ONTOLOGY_DATA_PATH}/bom_event.csv`);
-    cachedBOMEvents = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load BOM events:', error);
-    return [];
-  }
-}
-
-/**
- * Load supplier entities from CSV
- */
-export async function loadSupplierEntities(forceReload = false): Promise<SupplierEntity[]> {
-  if (cachedSupplierEntities && !forceReload) {
-    return cachedSupplierEntities;
-  }
-
-  try {
-    const timestamp = new Date().getTime();
-    const data = await loadCSV<SupplierEntity>(`${ONTOLOGY_DATA_PATH}/supplier_entity.csv?v=${timestamp}`);
-    console.log('Loaded supplier entities:', data.length, 'records');
-    cachedSupplierEntities = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load supplier entities:', error);
-    return [];
-  }
-}
-
-/**
- * Load monthly sales by product from CSV
- */
-export async function loadMonthlySalesByProduct(forceReload = false): Promise<MonthlySalesByProduct[]> {
-  if (cachedMonthlySales && !forceReload) {
-    return cachedMonthlySales;
-  }
-
-  try {
-    const data = await loadCSV<MonthlySalesByProduct>(`${ONTOLOGY_DATA_PATH}/monthly_sales_by_product.csv`);
-    cachedMonthlySales = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load monthly sales:', error);
-    return [];
-  }
-}
-
-/**
- * Load material procurement events from CSV
- */
-export async function loadMaterialProcurementEvents(forceReload = false): Promise<MaterialProcurementEvent[]> {
-  if (cachedMaterialProcurements && !forceReload) {
-    return cachedMaterialProcurements;
-  }
-
-  try {
-    const data = await loadCSV<MaterialProcurementEvent>(`${ONTOLOGY_DATA_PATH}/material_procurement_event.csv`);
-    cachedMaterialProcurements = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load material procurement events:', error);
-    return [];
-  }
-}
-
-/**
- * Load supplier performance scores from CSV
- */
-export async function loadSupplierPerformanceScores(forceReload = false): Promise<SupplierPerformanceScore[]> {
-  if (cachedSupplierPerformances && !forceReload) {
-    return cachedSupplierPerformances;
-  }
-
-  try {
-    const timestamp = new Date().getTime();
-    const data = await loadCSV<SupplierPerformanceScore>(`${ONTOLOGY_DATA_PATH}/supplier_performance_scores.csv?v=${timestamp}`);
-    console.log('Loaded supplier performance scores:', data.length, 'records');
-    if (data.length > 0) {
-      console.log('Sample supplier performance:', data[0]);
+    const now = Date.now();
+    if (now - entry.timestamp > CACHE_TTL) {
+        cache.delete(key);
+        return null;
     }
-    cachedSupplierPerformances = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load supplier performance scores:', error);
-    return [];
-  }
+
+    return entry.data as T;
+}
+
+function setCache<T>(key: string, data: T): void {
+    cache.set(key, {
+        data,
+        timestamp: Date.now(),
+    });
+}
+
+// ============================================================================
+// API Data Loading Functions
+// ============================================================================
+
+/**
+ * Load product entities
+ * Returns: product_id, product_name, product_code, status, created_date, etc.
+ */
+export async function loadProductEntities(forceReload: boolean = false): Promise<any[]> {
+    const cacheKey = 'product_entities';
+
+    if (!forceReload) {
+        const cached = getCached<any[]>(cacheKey);
+        if (cached) {
+            console.log('[OntologyDataService] Using cached product entities');
+            return cached;
+        }
+    }
+
+    console.log('[OntologyDataService] Loading product entities from API...');
+
+    try {
+        const response = await ontologyApi.queryObjectInstances(OBJECT_TYPE_IDS.PRODUCT, {
+            limit: 10000,
+            need_total: false,
+        });
+
+        const products = response.entries.map((item: any) => ({
+            product_id: item.product_id || item.product_code,
+            product_code: item.product_code || '',
+            product_name: item.product_name || '',
+            product_model: item.product_model,
+            product_series: item.product_series,
+            product_type: item.product_type,
+            status: item.status || 'Active',
+            created_date: item.created_date || item.create_time,
+            main_unit: item.main_unit || item.unit,
+        }));
+
+        console.log(`[OntologyDataService] Loaded ${products.length} product entities`);
+        setCache(cacheKey, products);
+        return products;
+    } catch (error) {
+        console.error('[OntologyDataService] Failed to load product entities:', error);
+        return [];
+    }
 }
 
 /**
- * Load sales order events from CSV
+ * Load BOM events
+ * Returns: parent_id, child_code, parent_type, status, etc.
  */
-export async function loadSalesOrderEvents(forceReload = false): Promise<SalesOrderEvent[]> {
-  if (cachedSalesOrders && !forceReload) {
-    return cachedSalesOrders;
-  }
+export async function loadBOMEvents(forceReload: boolean = false): Promise<any[]> {
+    const cacheKey = 'bom_events';
 
-  try {
-    const data = await loadCSV<SalesOrderEvent>(`${ONTOLOGY_DATA_PATH}/sales_order_event.csv`);
-    cachedSalesOrders = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load sales order events:', error);
-    return [];
-  }
+    if (!forceReload) {
+        const cached = getCached<any[]>(cacheKey);
+        if (cached) {
+            console.log('[OntologyDataService] Using cached BOM events');
+            return cached;
+        }
+    }
+
+    console.log('[OntologyDataService] Loading BOM events from API...');
+
+    try {
+        const response = await ontologyApi.queryObjectInstances(OBJECT_TYPE_IDS.BOM, {
+            limit: 10000,
+            need_total: false,
+        });
+
+        const bomEvents = response.entries.map((item: any) => ({
+            bom_id: item.bom_id || item.bom_number,
+            parent_id: item.parent_code || item.parent_id,
+            parent_code: item.parent_code,
+            child_code: item.child_code || '',
+            child_name: item.child_name,
+            parent_type: 'Product', // Default to Product
+            status: item.status || 'Active',
+            quantity: item.quantity || item.child_quantity,
+            unit: item.unit,
+            relationship_type: item.relationship_type,
+        }));
+
+        console.log(`[OntologyDataService] Loaded ${bomEvents.length} BOM events`);
+        setCache(cacheKey, bomEvents);
+        return bomEvents;
+    } catch (error) {
+        console.error('[OntologyDataService] Failed to load BOM events:', error);
+        return [];
+    }
 }
 
 /**
- * Load material entities from CSV
+ * Load inventory events
+ * Returns: item_id, item_code, quantity, snapshot_month, item_type, status, etc.
  */
-export async function loadMaterialEntities(forceReload = false): Promise<MaterialEntity[]> {
-  if (cachedMaterialEntities && !forceReload) {
-    return cachedMaterialEntities;
-  }
+export async function loadInventoryEvents(forceReload: boolean = false): Promise<any[]> {
+    const cacheKey = 'inventory_events';
 
-  try {
-    const data = await loadCSV<MaterialEntity>(`${ONTOLOGY_DATA_PATH}/material_entity.csv`);
-    cachedMaterialEntities = data;
-    return data;
-  } catch (error) {
-    console.error('Failed to load material entities:', error);
-    return [];
-  }
+    if (!forceReload) {
+        const cached = getCached<any[]>(cacheKey);
+        if (cached) {
+            console.log('[OntologyDataService] Using cached inventory events');
+            return cached;
+        }
+    }
+
+    console.log('[OntologyDataService] Loading inventory events from API...');
+
+    try {
+        const response = await ontologyApi.queryObjectInstances(OBJECT_TYPE_IDS.INVENTORY, {
+            limit: 10000,
+            need_total: false,
+        });
+
+        const inventoryEvents = response.entries.map((item: any) => ({
+            item_id: item.item_id || item.product_code || item.material_code,
+            item_code: item.item_code || item.material_code || item.product_code,
+            material_code: item.material_code,
+            material_name: item.material_name,
+            quantity: item.quantity || item.inventory_data || item.available_quantity || '0',
+            snapshot_month: item.snapshot_month || item.update_time,
+            item_type: item.item_type || 'Product',
+            status: item.status || 'Active',
+            inventory_data: item.inventory_data,
+            available_quantity: item.available_quantity,
+            safety_stock: item.safety_stock,
+        }));
+
+        console.log(`[OntologyDataService] Loaded ${inventoryEvents.length} inventory events`);
+        setCache(cacheKey, inventoryEvents);
+        return inventoryEvents;
+    } catch (error) {
+        console.error('[OntologyDataService] Failed to load inventory events:', error);
+        return [];
+    }
 }
 
 /**
- * Load alternative suppliers from CSV
+ * Load supplier entities
+ * Returns: supplier_id, supplier_name, etc.
  */
-export async function loadAlternativeSuppliers(forceReload = false): Promise<AlternativeSupplierCSV[]> {
-  if (cachedAlternativeSuppliers && !forceReload) {
-    return cachedAlternativeSuppliers;
-  }
+export async function loadSupplierEntities(forceReload: boolean = false): Promise<any[]> {
+    const cacheKey = 'supplier_entities';
 
-  try {
-    // Add timestamp to force cache bypass
-    const timestamp = new Date().getTime();
-    const data = await loadCSV<AlternativeSupplierCSV>(`${ONTOLOGY_DATA_PATH}/alternative_suppliers.csv?v=${timestamp}`);
-    cachedAlternativeSuppliers = data;
-    console.log('Loaded alternative suppliers with timestamp:', timestamp);
-    return data;
-  } catch (error) {
-    console.error('Failed to load alternative suppliers:', error);
+    if (!forceReload) {
+        const cached = getCached<any[]>(cacheKey);
+        if (cached) {
+            console.log('[OntologyDataService] Using cached supplier entities');
+            return cached;
+        }
+    }
+
+    console.log('[OntologyDataService] Loading supplier entities from API...');
+
+    try {
+        const response = await ontologyApi.queryObjectInstances(OBJECT_TYPE_IDS.SUPPLIER, {
+            limit: 10000,
+            need_total: false,
+        });
+
+        const suppliers = response.entries.map((item: any) => ({
+            supplier_id: item.supplier_id || item.supplier_code,
+            supplier_code: item.supplier_code,
+            supplier_name: item.supplier_name || '',
+            supplier_type: item.supplier_type,
+            contact: item.contact,
+            phone: item.phone,
+            email: item.email,
+            address: item.address,
+            status: item.status || 'Active',
+        }));
+
+        console.log(`[OntologyDataService] Loaded ${suppliers.length} supplier entities`);
+        setCache(cacheKey, suppliers);
+        return suppliers;
+    } catch (error) {
+        console.error('[OntologyDataService] Failed to load supplier entities:', error);
+        return [];
+    }
+}
+
+/**
+ * Load supplier performance scores
+ * Returns: supplier_id, overall_score, quality_score, otif_rate, etc.
+ */
+export async function loadSupplierPerformanceScores(forceReload: boolean = false): Promise<any[]> {
+    console.warn('[OntologyDataService] Supplier performance object type ID needs to be confirmed');
+    console.warn('[OntologyDataService] Returning empty array until correct ID is provided');
     return [];
-  }
+}
+
+/**
+ * Load sales order events
+ * Returns: sales_order_id, product_id, quantity, order_status, etc.
+ */
+export async function loadSalesOrderEvents(forceReload: boolean = false): Promise<any[]> {
+    const cacheKey = 'sales_order_events';
+
+    if (!forceReload) {
+        const cached = getCached<any[]>(cacheKey);
+        if (cached) {
+            console.log('[OntologyDataService] Using cached sales order events');
+            return cached;
+        }
+    }
+
+    console.log('[OntologyDataService] Loading sales order events from API...');
+
+    try {
+        const response = await ontologyApi.queryObjectInstances(OBJECT_TYPE_IDS.SALES_ORDER, {
+            limit: 10000,
+            need_total: false,
+        });
+
+        const salesOrders = response.entries.map((item: any) => ({
+            sales_order_id: item.sales_order_id || item.order_number,
+            sales_order_number: item.sales_order_number || item.order_number,
+            product_id: item.product_id || item.product_code,
+            product_code: item.product_code,
+            customer_name: item.customer_name || item.client,
+            quantity: item.quantity || item.signing_quantity || '0',
+            signing_quantity: item.signing_quantity,
+            shipping_quantity: item.shipping_quantity,
+            document_date: item.document_date || item.order_date,
+            planned_delivery_date: item.planned_delivery_date || item.due_date,
+            order_status: item.order_status || item.status || 'Active',
+            status: item.status || 'Active',
+        }));
+
+        console.log(`[OntologyDataService] Loaded ${salesOrders.length} sales order events`);
+        setCache(cacheKey, salesOrders);
+        return salesOrders;
+    } catch (error) {
+        console.error('[OntologyDataService] Failed to load sales order events:', error);
+        return [];
+    }
+}
+
+/**
+ * Load material entities
+ * Returns: material_code, material_name, etc.
+ */
+export async function loadMaterialEntities(forceReload: boolean = false): Promise<any[]> {
+    const cacheKey = 'material_entities';
+
+    if (!forceReload) {
+        const cached = getCached<any[]>(cacheKey);
+        if (cached) {
+            console.log('[OntologyDataService] Using cached material entities');
+            return cached;
+        }
+    }
+
+    console.log('[OntologyDataService] Loading material entities from API...');
+
+    try {
+        const response = await ontologyApi.queryObjectInstances(OBJECT_TYPE_IDS.MATERIAL, {
+            limit: 10000,
+            need_total: false,
+        });
+
+        const materials = response.entries.map((item: any) => ({
+            material_code: item.material_code || '',
+            material_name: item.material_name || '',
+            material_type: item.material_type,
+            specification: item.specification,
+            unit: item.unit,
+            unit_price: item.unit_price,
+            delivery_duration: item.delivery_duration,
+            status: item.status || 'Active',
+        }));
+
+        console.log(`[OntologyDataService] Loaded ${materials.length} material entities`);
+        setCache(cacheKey, materials);
+        return materials;
+    } catch (error) {
+        console.error('[OntologyDataService] Failed to load material entities:', error);
+        return [];
+    }
+}
+
+/**
+ * Load material procurement events
+ * Returns: material_code, supplier_id, procurement data, etc.
+ */
+export async function loadMaterialProcurementEvents(forceReload: boolean = false): Promise<any[]> {
+    console.warn('[OntologyDataService] Procurement event object type ID needs to be confirmed');
+    console.warn('[OntologyDataService] Returning empty array until correct ID is provided');
+    return [];
 }
 
 /**
  * Clear all caches
  */
 export function clearCache(): void {
-  cachedProductEntities = null;
-  cachedInventoryEvents = null;
-  cachedBOMEvents = null;
-  cachedSupplierEntities = null;
-  cachedMonthlySales = null;
-  cachedMaterialProcurements = null;
-  cachedSupplierPerformances = null;
-  cachedSalesOrders = null;
-  cachedMaterialEntities = null;
-  cachedAlternativeSuppliers = null;
+    cache.clear();
+    console.log('[OntologyDataService] Cache cleared');
 }

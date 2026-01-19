@@ -10,32 +10,19 @@ import { ShoppingCart, TrendingUp, Loader2 } from 'lucide-react';
 import { getProcurementSummary } from '../../utils/cockpitDataService';
 import { generateProcurementRecommendations } from '../../utils/recommendationService';
 import { useMetricData, latestValueTransform } from '../../hooks/useMetricData';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 // 采购指标模型 ID 配置 - 根据数据模式使用不同的指标
+// 采购指标模型 ID 配置
 const METRIC_IDS = {
-  // Mock 数据模式：对接原有整套 API
-  mock: {
-    /** 计划采购总量 */
-    PLANNED_PURCHASE_TOTAL: 'd51nnclg5lk40hvh48h0',
-    /** 已采购量 */
-    PURCHASED_QUANTITY: 'd51o5rtg5lk40hvh48hg',
-    /** 执行率 */
-    EXECUTION_RATE: 'd51o6qtg5lk40hvh48i0',
-    /** 在途采购量 */
-    IN_TRANSIT_QUANTITY: 'd51oh5lg5lk40hvh48ig',
-  },
-  // 惠达供应链大脑模式：对接新的惠达数据 API
-  api: {
-    /** 计划采购总量 - TODO: 待提供新的采购指标 ID */
-    PLANNED_PURCHASE_TOTAL: '',
-    /** 已采购量 - TODO: 待提供新的采购指标 ID */
-    PURCHASED_QUANTITY: '',
-    /** 执行率 - TODO: 待提供新的采购指标 ID */
-    EXECUTION_RATE: '',
-    /** 在途采购量 - TODO: 待提供新的采购指标 ID */
-    IN_TRANSIT_QUANTITY: '',
-  }
+  /** 计划采购总量 */
+  PLANNED_PURCHASE_TOTAL: 'd51nnclg5lk40hvh48h0',
+  /** 已采购量 */
+  PURCHASED_QUANTITY: 'd51o5rtg5lk40hvh48hg',
+  /** 执行率 */
+  EXECUTION_RATE: 'd51o6qtg5lk40hvh48i0',
+  /** 在途采购量 */
+  IN_TRANSIT_QUANTITY: 'd51oh5lg5lk40hvh48ig',
 };
 
 interface Props {
@@ -43,13 +30,10 @@ interface Props {
 }
 
 const ProcurementPanel = ({ onNavigate: _onNavigate }: Props) => {
-  // 获取当前数据模式
-  const { mode } = useDataMode();
-
   const summary = useMemo(() => getProcurementSummary(), []);
 
-  // 根据当前模式选择对应的指标 ID
-  const currentMetricIds = METRIC_IDS[mode];
+  // 使用配置的指标 ID
+  const currentMetricIds = METRIC_IDS;
 
   // 从真实 API 获取采购指标数据
   const {
@@ -185,16 +169,16 @@ const ProcurementPanel = ({ onNavigate: _onNavigate }: Props) => {
                 </div>
                 <div className="text-right">
                   <div className={`text-sm font-semibold ${item.executionPercentage >= 80 ? 'text-green-600' :
-                      item.executionPercentage >= 50 ? 'text-yellow-600' :
-                        'text-red-600'
+                    item.executionPercentage >= 50 ? 'text-yellow-600' :
+                      'text-red-600'
                     }`}>
                     {item.executionPercentage.toFixed(1)}%
                   </div>
                   <div className="w-20 h-2 bg-slate-200 rounded-full mt-1 overflow-hidden">
                     <div
                       className={`h-full ${item.executionPercentage >= 80 ? 'bg-green-500' :
-                          item.executionPercentage >= 50 ? 'bg-yellow-500' :
-                            'bg-red-500'
+                        item.executionPercentage >= 50 ? 'bg-yellow-500' :
+                          'bg-red-500'
                         }`}
                       style={{ width: `${Math.min(item.executionPercentage, 100)}%` }}
                     />

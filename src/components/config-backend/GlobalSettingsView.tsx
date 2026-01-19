@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Save, Eye, EyeOff, RotateCcw, CheckCircle, XCircle, Loader2, Key } from 'lucide-react';
+import { Save, Eye, EyeOff, RotateCcw, Loader2, Key } from 'lucide-react';
 import { globalSettingsService } from '../../services/globalSettingsService';
 import type { GlobalSettings } from '../../types/globalSettings';
 
@@ -17,8 +17,6 @@ const GlobalSettingsView = () => {
     const [showToken, setShowToken] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
-    const [isTesting, setIsTesting] = useState(false);
-    const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
     // Load settings on mount
@@ -51,6 +49,9 @@ const GlobalSettingsView = () => {
             };
             globalSettingsService.saveSettings(updated);
 
+            // CRITICAL: Sync to localStorage.api_auth_token (the key that getAuthToken() reads)
+            localStorage.setItem('api_auth_token', editedToken);
+
             // Sync to runtime configuration immediately
             import('../../config/apiConfig').then(({ updateApiConfig }) => {
                 updateApiConfig({
@@ -63,7 +64,7 @@ const GlobalSettingsView = () => {
 
             setSettings(updated);
             setIsEditing(false);
-            setSaveMessage('保存成功！');
+            setSaveMessage('保存成功！Token 已同步到认证系统');
             setTimeout(() => setSaveMessage(null), 3000);
         } catch (error) {
             setSaveMessage('保存失败: ' + (error instanceof Error ? error.message : '未知错误'));
@@ -83,21 +84,7 @@ const GlobalSettingsView = () => {
         }
     };
 
-    const handleTestConnection = async () => {
-        setIsTesting(true);
-        setTestResult(null);
-        try {
-            const result = await globalSettingsService.testConnection();
-            setTestResult(result);
-        } catch (error) {
-            setTestResult({
-                success: false,
-                message: error instanceof Error ? error.message : '测试失败'
-            });
-        } finally {
-            setIsTesting(false);
-        }
-    };
+
 
     const maskToken = (token: string) => {
         if (token.length <= 20) return '***';
@@ -217,43 +204,6 @@ const GlobalSettingsView = () => {
                         </div>
                     )}
                 </div>
-            </div>
-
-            {/* Test Connection Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">连接测试</h3>
-
-                <button
-                    onClick={handleTestConnection}
-                    disabled={isTesting}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-4"
-                >
-                    {isTesting ? (
-                        <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                        <CheckCircle size={16} />
-                    )}
-                    {isTesting ? '测试中...' : '测试 API 连接'}
-                </button>
-
-                {testResult && (
-                    <div className={`flex items-start gap-3 p-4 rounded-lg ${testResult.success
-                        ? 'bg-green-50 border border-green-200'
-                        : 'bg-red-50 border border-red-200'
-                        }`}>
-                        {testResult.success ? (
-                            <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
-                        ) : (
-                            <XCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
-                        )}
-                        <div>
-                            <p className={`font-medium ${testResult.success ? 'text-green-800' : 'text-red-800'
-                                }`}>
-                                {testResult.message}
-                            </p>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Reset Section */}

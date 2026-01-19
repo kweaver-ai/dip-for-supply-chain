@@ -14,13 +14,12 @@ import { MessageSquare } from 'lucide-react';
 import MainMaterialSupplierPanel from './MainMaterialSupplierPanel';
 import SupplierComparisonModal from './SupplierComparisonModal';
 import Supplier360Scorecard from './Supplier360Scorecard';
-import { getMainMaterialsByPurchaseAmountWithMode, getMainMaterialsByStock } from '../../services/materialService';
+import { getMainMaterialsByPurchaseAmount, getMainMaterialsByStock } from '../../services/materialService';
 import { supplier360ScorecardsData } from '../../utils/entityConfigService';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 const SupplierEvaluationPage = ({ toggleCopilot }: { toggleCopilot?: () => void } = {}) => {
-  // 获取当前数据模式
-  const { mode } = useDataMode();
+
 
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
@@ -31,8 +30,9 @@ const SupplierEvaluationPage = ({ toggleCopilot }: { toggleCopilot?: () => void 
   // Set default supplier on mount or mode change
   useEffect(() => {
     const setDefaultSupplier = async () => {
-      // 使用模式感知的数据加载函数
-      const materials = await getMainMaterialsByPurchaseAmountWithMode(5, mode);
+      // Load supplier data from API
+      const materialsData = await getMainMaterialsByPurchaseAmount();
+      const materials = materialsData.slice(0, 5);
 
       if (materials.length > 0) {
         // 如果已选供应商不在当前列表中（例如切换模式后），则重置为第一个
@@ -41,27 +41,15 @@ const SupplierEvaluationPage = ({ toggleCopilot }: { toggleCopilot?: () => void 
         if (!selectedSupplierId || !currentSelectedInList) {
           const firstSupplierId = materials[0].supplierId;
 
-          if (mode === 'api') {
-            // 大脑模式直接使用第一个供应商
-            setSelectedSupplierId(firstSupplierId);
-          } else {
-            // Mock模式：验证是否有scorecard数据
-            const hasScorecard = supplier360ScorecardsData.some(sc => sc.supplierId === firstSupplierId);
-            if (hasScorecard) {
-              setSelectedSupplierId(firstSupplierId);
-            } else {
-              const supplierWithScorecard = supplier360ScorecardsData[0];
-              if (supplierWithScorecard) {
-                setSelectedSupplierId(supplierWithScorecard.supplierId);
-              }
-            }
+          if (materials.length > 0) {
+            setSelectedSupplierId(materials[0].supplierId);
           }
         }
       }
     };
 
     setDefaultSupplier();
-  }, [mode]); // 当模式改变时重新运行
+  }, []);
 
   const handleSupplierClick = (supplierId: string) => {
     setSelectedSupplierId(supplierId);
@@ -108,8 +96,9 @@ const SupplierEvaluationPage = ({ toggleCopilot }: { toggleCopilot?: () => void 
             onSupplierChange={handleSupplierClick}
             onSwitchSupplier={async () => {
               // Find material code for this supplier
-              // 使用模式感知的数据加载函数
-              const materials = await getMainMaterialsByPurchaseAmountWithMode(5, mode);
+              // Load supplier data
+              const materialsData = await getMainMaterialsByPurchaseAmount();
+              const materials = materialsData.slice(0, 5);
               const material = materials.find(m => m.supplierId === selectedSupplierId);
               if (material) {
                 setComparisonMaterialCode(material.materialCode);

@@ -31,7 +31,7 @@ import { useConversation } from './hooks/useConversation';
 import ConfigBackendLayout from './components/config-backend/ConfigBackendLayout';
 import { populateEntityConfigs } from './utils/entityConfigService';
 import { initializeEntityData } from './utils/entityConfigService';
-import { DataModeProvider } from './contexts/DataModeContext';
+
 
 // Navigation configuration
 const navigation = [
@@ -218,12 +218,10 @@ const SupplyChainAppContent = () => {
 
 // Data Mode Switcher removed - moved to Config Backend
 
-// Main App with Provider
+// Main App
 const SupplyChainApp = () => {
   return (
-    <DataModeProvider>
-      <SupplyChainAppContent />
-    </DataModeProvider>
+    <SupplyChainAppContent />
   );
 };
 

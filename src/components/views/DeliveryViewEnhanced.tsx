@@ -4,7 +4,7 @@ import {
   Search, Filter, X, Package, TrendingUp, Calendar, BarChart3
 } from 'lucide-react';
 import type { DeliveryOrder } from '../../types/ontology';
-import { loadDeliveryOrdersByMode, calculateDeliveryStats, filterDeliveryOrders } from '../../services/deliveryDataService';
+import { loadDeliveryOrders, calculateDeliveryStats, filterDeliveryOrders } from '../../services/deliveryDataService';
 import type { LucideIcon } from 'lucide-react';
 
 // Enriched order type with computed properties
@@ -16,16 +16,13 @@ interface EnrichedDeliveryOrder extends DeliveryOrder {
 }
 import OrderDetailModal from './OrderDetailModal';
 import DeliveryCharts from './DeliveryCharts';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 interface Props {
   toggleCopilot?: () => void;
 }
 
 const DeliveryViewEnhanced = (_props: Props) => {
-  // 获取当前数据模式
-  const { mode } = useDataMode();
-
   // 数据状态
   const [allOrders, setAllOrders] = useState<DeliveryOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +55,7 @@ const DeliveryViewEnhanced = (_props: Props) => {
       try {
         setLoading(true);
         // 根据模式加载对应数据
-        const orders = await loadDeliveryOrdersByMode(mode);
+        const orders = await loadDeliveryOrders();
         setAllOrders(orders);
         setError(null);
         // 模式切换时重置分页
@@ -73,14 +70,15 @@ const DeliveryViewEnhanced = (_props: Props) => {
     };
 
     fetchData();
-  }, [mode]); // 添加mode依赖
+    fetchData();
+  }, []);
 
   // 应用筛选
   const filteredOrders = useMemo(() => {
     return filterDeliveryOrders(allOrders, {
       status: statusFilter || undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
+      dateFrom: dateFrom ? new Date(dateFrom) : undefined,
+      dateTo: dateTo ? new Date(dateTo) : undefined,
       isUrgent: urgentOnly || undefined,
       searchText: searchText || undefined,
     });

@@ -1,0 +1,16 @@
+﻿src/components/config-backend/KnowledgeGraphView.tsx(126,20): error TS2304: Cannot find name 'useDataMode'.
+src/components/product-supply-optimization/AssemblyLogicModal.tsx(3,35): error TS2307: Cannot find module '../../services/ProductAssemblyCalculator' or its corresponding type declarations.
+src/components/product-supply-optimization/AssemblyLogicModal.tsx(91,41): error TS7006: Parameter 'child' implicitly has an 'any' type.
+src/components/product-supply-optimization/AssemblyLogicModal.tsx(91,48): error TS7006: Parameter 'idx' implicitly has an 'any' type.
+src/components/product-supply-optimization/DemandForecastPanel.tsx(5,10): error TS2305: Module '"../../services/demandForecastService"' has no exported member 'calculateDemandForecast'.
+src/components/product-supply-optimization/ProductInventoryCard.tsx(25,13): error TS2304: Cannot find name 'setInventoryCount'.
+src/components/product-supply-optimization/ProductInventoryCard.tsx(30,13): error TS2304: Cannot find name 'setLoading'.
+src/components/product-supply-optimization/ProductInventoryCard.tsx(74,17): error TS2304: Cannot find name 'setInventoryCount'.
+src/components/product-supply-optimization/ProductInventoryCard.tsx(78,17): error TS2304: Cannot find name 'setLoading'.
+src/components/product-supply-optimization/ProductInventoryCard.tsx(86,42): error TS2304: Cannot find name 'inventoryCount'.
+src/components/product-supply-optimization/ProductInventoryCard.tsx(86,68): error TS2304: Cannot find name 'inventoryCount'.
+src/components/product-supply-optimization/ProductInventoryCard.tsx(97,18): error TS2304: Cannot find name 'loading'.
+src/components/product-supply-optimization/ProductOrderAnalysisCard.tsx(272,8): error TS2304: Cannot find name 'OrderAnalysisModal'.
+src/components/views/DeliveryViewEnhanced.tsx(80,7): error TS2353: Object literal may only specify known properties, and 'dateFrom' does not exist in type '{ status?: string | undefined; riskLevel?: string | undefined; productId?: string | undefined; }'.
+src/components/views/inventory/StagnantInventoryOptimizer.tsx(18,28): error TS2307: Cannot find module '../../../services/csvDataLoader' or its corresponding type declarations.
+src/services/productSupplyService.ts(162,9): error TS2322: Type '"mature"' is not assignable to type 'ProductLifecycleStage'.

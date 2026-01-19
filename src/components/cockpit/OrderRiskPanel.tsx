@@ -14,16 +14,15 @@ import {
   AlertTriangle, ArrowRight, Truck, Package, CheckCircle,
   TrendingUp, Loader2, Clock
 } from 'lucide-react';
-import { loadDeliveryOrdersByMode, calculateDeliveryStats } from '../../services/deliveryDataService';
+import { loadDeliveryOrders, calculateDeliveryStats } from '../../services/deliveryDataService';
 import type { DeliveryOrder } from '../../types/ontology';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 interface Props {
   onNavigate?: (view: string) => void;
 }
 
 const OrderRiskPanel = ({ onNavigate }: Props) => {
-  const { mode } = useDataMode();
   const [orders, setOrders] = useState<DeliveryOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +31,7 @@ const OrderRiskPanel = ({ onNavigate }: Props) => {
     async function fetchOrders() {
       setLoading(true);
       try {
-        const data = await loadDeliveryOrdersByMode(mode);
+        const data = await loadDeliveryOrders();
         setOrders(data);
       } catch (error) {
         console.error('Failed to load orders:', error);
@@ -41,7 +40,8 @@ const OrderRiskPanel = ({ onNavigate }: Props) => {
       }
     }
     fetchOrders();
-  }, [mode]);
+    fetchOrders();
+  }, []);
 
   // 计算统计数据
   const stats = useMemo(() => calculateDeliveryStats(orders), [orders]);

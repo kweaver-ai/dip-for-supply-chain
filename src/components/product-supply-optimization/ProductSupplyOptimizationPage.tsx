@@ -3,13 +3,10 @@ import { ProductSupplyAnalysisPanel } from './ProductSupplyAnalysisPanel';
 import { getAllProductsSupplyAnalysis, getProductLifecycleAssessment } from '../../services/productSupplyService';
 import { calculateMultipleForecastModels } from '../../services/demandForecastService';
 import type { ProductSupplyAnalysis, DemandForecast, Product, ProductLifecycleAssessment } from '../../types/ontology';
-import { productsData } from '../../utils/entityConfigService';
 import { loadProductEntities, loadBOMEvents, loadInventoryEvents } from '../../services/ontologyDataService';
 import { Filter, Download, Layers, MessageSquare } from 'lucide-react';
-import { useDataMode } from '../../contexts/DataModeContext';
 
 export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => void }> = ({ toggleCopilot }) => {
-  const { mode } = useDataMode();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [analyses, setAnalyses] = useState<ProductSupplyAnalysis[]>([]);
   const [demandForecasts, setDemandForecasts] = useState<Map<string, DemandForecast>>(new Map());
@@ -17,83 +14,69 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // 使用ref来跟踪当前mode，避免闭包问题
-  const currentModeRef = useRef(mode);
-  currentModeRef.current = mode;
-
-  // 唯一的数据加载useEffect - 同时处理两种模式的所有数据
+  // 唯一的数据加载useEffect
   useEffect(() => {
     const loadAllData = async () => {
       setLoading(true);
       setError(null);
-      // 关键修复：模式切换时重置selectedProductId，避免跨模式ID不一致
-      setSelectedProductId(null);
-      const currentMode = currentModeRef.current;
-      console.log(`[数据加载] 开始加载，当前模式: ${currentMode}`);
+      console.log(`[数据加载] 开始加载智能计算数据...`);
 
       try {
         let analysisData: ProductSupplyAnalysis[] = [];
         let forecastsMap = new Map<string, DemandForecast>();
 
-        if (currentMode === 'api') {
-          // ===== 大脑模式 =====
-          console.log('[大脑模式] 开始加载智能计算数据...');
-          const { calculateAllProductsSupplyAnalysis } = await import('../../services/productSupplyCalculator');
-          const smartAnalyses = await calculateAllProductsSupplyAnalysis();
+        // ===== 大脑模式 =====
+        console.log('[大脑模式] 开始加载智能计算数据...');
+        const { calculateAllProductsSupplyAnalysis } = await import('../../services/productSupplyCalculator');
+        const smartAnalyses = await calculateAllProductsSupplyAnalysis();
 
-          // 转换分析数据
-          analysisData = smartAnalyses.map(analysis => ({
-            productId: analysis.productId,
-            productName: analysis.productName,
-            currentStock: analysis.inventoryStatus.currentStock,
-            safetyStock: Math.ceil(analysis.demandTrend.averageDailyDemand * 30),
-            stockDays: analysis.inventoryStatus.stockDays,
-            demandTrend: analysis.demandTrend.demandGrowthRate > 0 ? 'increasing' as const : 'decreasing' as const,
-            supplyRisk: analysis.supplyRisk.riskLevel,
-            recommendation: analysis.inventoryOptimization.reason,
-            supplierCount: Math.min(10, Math.max(1, Math.ceil(analysis.demandTrend.last90DaysDemand / 2000))),
-            averageDeliveryCycle: 30 + (analysis.demandTrend.demandGrowthRate > 50 ? 10 : 0),
-            supplyStabilityScore: Math.round(100 - analysis.supplyRisk.riskScore),
-            currentInventoryLevel: analysis.inventoryStatus.currentStock,
-            stockoutRiskLevel: analysis.inventoryStatus.stockStatus === 'sufficient' ? 'low' as const :
-              analysis.inventoryStatus.stockStatus === 'warning' ? 'medium' as const : 'high' as const,
-            lastUpdated: new Date().toISOString(),
-            leadTime: 30,
-            reorderPoint: Math.ceil(analysis.demandTrend.averageDailyDemand * 30),
-            economicOrderQuantity: Math.ceil(analysis.demandTrend.averageDailyDemand * 60),
-          }));
+        // 转换分析数据
+        analysisData = smartAnalyses.map(analysis => ({
+          productId: analysis.productId,
+          productName: analysis.productName,
+          currentStock: analysis.inventoryStatus.currentStock,
+          safetyStock: Math.ceil(analysis.demandTrend.averageDailyDemand * 30),
+          stockDays: analysis.inventoryStatus.stockDays,
+          demandTrend: analysis.demandTrend.demandGrowthRate > 0 ? 'increasing' as const : 'decreasing' as const,
+          supplyRisk: analysis.supplyRisk.riskLevel,
+          recommendation: analysis.inventoryOptimization.reason,
+          supplierCount: Math.min(10, Math.max(1, Math.ceil(analysis.demandTrend.last90DaysDemand / 2000))),
+          averageDeliveryCycle: 30 + (analysis.demandTrend.demandGrowthRate > 50 ? 10 : 0),
+          supplyStabilityScore: Math.round(100 - analysis.supplyRisk.riskScore),
+          currentInventoryLevel: analysis.inventoryStatus.currentStock,
+          stockoutRiskLevel: analysis.inventoryStatus.stockStatus === 'sufficient' ? 'low' as const :
+            analysis.inventoryStatus.stockStatus === 'warning' ? 'medium' as const : 'high' as const,
+          lastUpdated: new Date().toISOString(),
+          leadTime: 30,
+          reorderPoint: Math.ceil(analysis.demandTrend.averageDailyDemand * 30),
+          economicOrderQuantity: Math.ceil(analysis.demandTrend.averageDailyDemand * 60),
+        }));
 
-          // 生成预测数据
-          smartAnalyses.forEach(analysis => {
-            const smartForecast = analysis.demandForecast;
-            const models = [
-              { method: 'moving_average' as const, name: '移动平均', predictions: smartForecast.predictions.movingAverage },
-              { method: 'exponential_smoothing' as const, name: '指数平滑', predictions: smartForecast.predictions.exponentialSmoothing },
-              { method: 'linear_regression' as const, name: '线性回归', predictions: smartForecast.predictions.linearRegression },
-            ];
+        // 生成预测数据
+        smartAnalyses.forEach(analysis => {
+          const smartForecast = analysis.demandForecast;
+          const models = [
+            { method: 'moving_average' as const, name: '移动平均', predictions: smartForecast.predictions.movingAverage },
+            { method: 'exponential_smoothing' as const, name: '指数平滑', predictions: smartForecast.predictions.exponentialSmoothing },
+            { method: 'linear_regression' as const, name: '线性回归', predictions: smartForecast.predictions.linearRegression },
+          ];
 
-            models.forEach(model => {
-              const avgPrediction = model.predictions.reduce((sum, val) => sum + val, 0) / model.predictions.length;
-              forecastsMap.set(`${analysis.productId}-${model.method}`, {
-                productId: analysis.productId,
-                productName: analysis.productName,
-                forecastPeriod: smartForecast.forecastPeriod,
-                predictedDemand: Math.round(avgPrediction),
-                confidenceLevel: smartForecast.confidence >= 80 ? 'high' : smartForecast.confidence >= 60 ? 'medium' : 'low',
-                calculationMethod: model.method,
-                forecastModel: model.name,
-                historicalDataPoints: analysis.demandTrend.demandHistory.length,
-                lastUpdated: new Date().toISOString(),
-              });
+          models.forEach(model => {
+            const avgPrediction = model.predictions.reduce((sum, val) => sum + val, 0) / model.predictions.length;
+            forecastsMap.set(`${analysis.productId}-${model.method}`, {
+              productId: analysis.productId,
+              productName: analysis.productName,
+              forecastPeriod: smartForecast.forecastPeriod,
+              predictedDemand: Math.round(avgPrediction),
+              confidenceLevel: smartForecast.confidence >= 80 ? 'high' : smartForecast.confidence >= 60 ? 'medium' : 'low',
+              calculationMethod: model.method,
+              forecastModel: model.name,
+              historicalDataPoints: analysis.demandTrend.demandHistory.length,
+              lastUpdated: new Date().toISOString(),
             });
           });
-          console.log('[大脑模式] 数据加载完成, 分析数据:', analysisData.length, '预测数据:', forecastsMap.size);
-        } else {
-          // ===== Mock模式 =====
-          console.log('[Mock模式] 开始加载Mock数据...');
-          analysisData = await getAllProductsSupplyAnalysis();
-          console.log('[Mock模式] 分析数据已加载:', analysisData.length);
-        }
+        });
+        console.log('[大脑模式] 数据加载完成, 分析数据:', analysisData.length, '预测数据:', forecastsMap.size);
 
         // 设置分析数据
         setAnalyses(analysisData);
@@ -107,19 +90,9 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
           console.log(`[数据加载] 自动选择第一个产品: ${productIdToSelect}`);
         }
 
-        // Mock模式：加载选中产品的预测数据
-        if (currentMode !== 'api' && productIdToSelect) {
-          console.log('[Mock模式] 加载产品预测:', productIdToSelect);
-          const multipleForecasts = await calculateMultipleForecastModels(productIdToSelect, 30);
-          multipleForecasts.forEach((forecast, index) => {
-            forecastsMap.set(`${productIdToSelect}-${index}`, forecast);
-          });
-          console.log('[Mock模式] 预测数据加载完成, size:', forecastsMap.size);
-        }
-
         // 设置预测数据
         setDemandForecasts(forecastsMap);
-        console.log(`[数据加载] 完成，模式: ${currentMode}, 预测数据size: ${forecastsMap.size}`);
+        console.log(`[数据加载] 完成, 预测数据size: ${forecastsMap.size}`);
       } catch (error) {
         console.error('Failed to load product supply optimization data:', error);
         setError(error instanceof Error ? error.message : String(error));
@@ -129,27 +102,13 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
     };
 
     loadAllData();
-  }, [mode]); // 只依赖mode
+  }, []);
 
-  // 当用户切换产品时，加载对应的预测数据（仅Mock模式需要）
+  // 当用户切换产品时，加载详细信息
   useEffect(() => {
     if (!selectedProductId) return;
 
-    // 只有Mock模式需要在产品切换时重新加载预测
-    if (mode !== 'api') {
-      const loadMockForecasts = async () => {
-        console.log('[Mock模式-产品切换] 加载产品预测:', selectedProductId);
-        const multipleForecasts = await calculateMultipleForecastModels(selectedProductId, 30);
-        const forecasts = new Map<string, DemandForecast>();
-        multipleForecasts.forEach((forecast, index) => {
-          forecasts.set(`${selectedProductId}-${index}`, forecast);
-        });
-        setDemandForecasts(forecasts);
-        console.log('[Mock模式-产品切换] 预测数据加载完成, size:', forecasts.size);
-      };
-      loadMockForecasts();
-    }
-    // 大脑模式不需要重新加载，因为所有产品的预测数据已经在第一个useEffect中加载了
+    // 大脑模式不需要重新加载预测数据，因为所有产品的预测数据已经在第一个useEffect中加载了
 
     // 加载产品详细信息
     const loadProductDetails = async () => {
@@ -198,7 +157,8 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
       }
     };
     loadProductDetails();
-  }, [selectedProductId, mode]);
+    loadProductDetails();
+  }, [selectedProductId]);
 
   const selectedAnalysis = analyses.find(a => a.productId === selectedProductId);
   const selectedProductLifecycleAssessment = selectedProductId ? getProductLifecycleAssessment(selectedProductId) : null;
@@ -234,7 +194,7 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
             <h3 className="text-xl font-bold text-red-700 mb-2">Error Loading Data</h3>
             <p className="text-red-600">{error}</p>
-            <p className="text-sm text-red-500 mt-2">Data loading failed in strict mode.</p>
+            <p className="text-red-600">{error}</p>
           </div>
         ) : (
           <ProductSupplyAnalysisPanel

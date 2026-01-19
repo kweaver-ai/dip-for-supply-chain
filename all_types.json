@@ -1,0 +1,34 @@
+[
+  {
+    "name": "销售订单",
+    "id": "d56vh169olk4bpa66v80"
+  },
+  {
+    "name": "需求计划",
+    "id": "d5f32v151opae7o9abd0"
+  },
+  {
+    "name": "物料",
+    "id": "d56voju9olk4bpa66vcg"
+  },
+  {
+    "name": "产品",
+    "id": "d56v4ue9olk4bpa66v00"
+  },
+  {
+    "name": "库存",
+    "id": "d56vcuu9olk4bpa66v3g"
+  },
+  {
+    "name": "工厂生产计划",
+    "id": "d5704qm9olk4bpa66vp0"
+  },
+  {
+    "name": "供应商",
+    "id": "d5700je9olk4bpa66vkg"
+  },
+  {
+    "name": "产品BOM",
+    "id": "d56vqtm9olk4bpa66vfg"
+  }
+]

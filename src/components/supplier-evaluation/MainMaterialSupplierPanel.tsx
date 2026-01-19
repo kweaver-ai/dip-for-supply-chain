@@ -9,11 +9,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getMainMaterialsByPurchaseAmountWithMode } from '../../services/materialService';
+import { getMainMaterialsByPurchaseAmount } from '../../services/materialService';
 import type { MainMaterialSupplier } from '../../types/ontology';
 import RiskBadge from './RiskBadge';
 import { AlertCircle, ArrowRight } from 'lucide-react';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 interface MainMaterialSupplierPanelProps {
   onSupplierClick?: (supplierId: string) => void;
@@ -24,8 +24,7 @@ const MainMaterialSupplierPanel = ({
   onSupplierClick,
   onSwitchSupplier
 }: MainMaterialSupplierPanelProps) => {
-  // 获取当前数据模式
-  const { mode } = useDataMode();
+
 
   const [materials, setMaterials] = useState<MainMaterialSupplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +35,8 @@ const MainMaterialSupplierPanel = ({
     const loadMaterials = async () => {
       setLoading(true);
       try {
-        const data = await getMainMaterialsByPurchaseAmountWithMode(limit, mode);
+        const materialsData = await getMainMaterialsByPurchaseAmount();
+        const data = materialsData.slice(0, limit);
         setMaterials(data);
       } catch (error) {
         console.error('Failed to load main materials:', error);
@@ -47,7 +47,7 @@ const MainMaterialSupplierPanel = ({
     };
 
     loadMaterials();
-  }, [limit, mode]); // 添加mode依赖
+  }, [limit]);
 
   if (loading) {
     return (
@@ -116,9 +116,9 @@ const MainMaterialSupplierPanel = ({
                       <span
                         key={event.eventId}
                         className={`text-xs px-2 py-0.5 rounded ${event.severity === 'critical' ? 'bg-red-100 text-red-700' :
-                            event.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                              event.severity === 'medium' ? 'bg-amber-100 text-amber-700' :
-                                'bg-slate-100 text-slate-700'
+                          event.severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                            event.severity === 'medium' ? 'bg-amber-100 text-amber-700' :
+                              'bg-slate-100 text-slate-700'
                           }`}
                       >
                         {event.eventType === 'defect' ? '缺陷' :

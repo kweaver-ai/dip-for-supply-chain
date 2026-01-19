@@ -11,8 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getSupplierComparisonWithMode } from '../../services/supplierService';
-import { useDataMode } from '../../contexts/DataModeContext';
+import { getSupplierComparison } from '../../services/supplierService';
 import type { SupplierComparison } from '../../types/ontology';
 import RiskBadge from './RiskBadge';
 import { X, Check, AlertTriangle } from 'lucide-react';
@@ -36,14 +35,13 @@ const SupplierComparisonModal = ({
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
-  const { mode } = useDataMode();
 
   useEffect(() => {
     if (isOpen && materialCode && currentSupplierId) {
-      console.log('SupplierComparisonModal: Loading comparison for', materialCode, currentSupplierId, 'Mode:', mode);
+      console.log('SupplierComparisonModal: Loading comparison for', materialCode, currentSupplierId);
       setLoading(true);
-      // Pass mode to getSupplierComparison
-      getSupplierComparisonWithMode(materialCode, currentSupplierId, mode).then(data => {
+      // Use getSupplierComparison directly
+      getSupplierComparison(currentSupplierId).then(data => {
         console.log('SupplierComparisonModal: Received comparison data:', data);
         setComparison(data);
         setLoading(false);
@@ -55,7 +53,7 @@ const SupplierComparisonModal = ({
         setLoading(false);
       });
     }
-  }, [isOpen, materialCode, currentSupplierId, mode]);
+  }, [isOpen, materialCode, currentSupplierId]);
 
   if (!isOpen) return null;
 

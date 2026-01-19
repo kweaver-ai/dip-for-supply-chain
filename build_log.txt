@@ -1,0 +1,11 @@
+﻿src/components/cockpit/AIAnalysisPanel.tsx(224,5): error TS1005: ',' expected.
+src/components/cockpit/AIAnalysisPanel.tsx(224,22): error TS1005: ',' expected.
+src/components/cockpit/AIAnalysisPanel.tsx(444,1): error TS1128: Declaration or statement expected.
+src/components/product-supply-optimization/ProductOrderAnalysisCard.tsx(281,1): error TS1160: Unterminated template literal.
+src/components/product-supply-optimization/ProductSupplyOptimizationPage.tsx(79,8): error TS1472: 'catch' or 'finally' expected.
+src/components/product-supply-optimization/ProductSupplyOptimizationPage.tsx(97,3): error TS1005: ',' expected.
+src/components/product-supply-optimization/ProductSupplyOptimizationPage.tsx(103,5): error TS1128: Declaration or statement expected.
+src/components/product-supply-optimization/ProductSupplyOptimizationPage.tsx(106,3): error TS1128: Declaration or statement expected.
+src/components/product-supply-optimization/ProductSupplyOptimizationPage.tsx(106,4): error TS1128: Declaration or statement expected.
+src/components/product-supply-optimization/ProductSupplyOptimizationPage.tsx(106,8): error TS1005: ';' expected.
+src/components/product-supply-optimization/ProductSupplyOptimizationPage.tsx(226,1): error TS1128: Declaration or statement expected.

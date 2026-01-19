@@ -10,36 +10,23 @@ import { Package, ShoppingCart, Warehouse, Box, Truck, Loader2, X, BarChart3 } f
 import OrderDemandCharts from './OrderDemandCharts';
 import ProductInventoryCharts from './ProductInventoryCharts';
 import MaterialInventoryCharts from './MaterialInventoryCharts';
-import { loadDeliveryOrdersByMode } from '../../services/deliveryDataService';
+import { loadDeliveryOrders } from '../../services/deliveryDataService';
 import type { DeliveryOrder } from '../../types/ontology';
 import { getSupplyChainGraphData, type SupplyChainStageData } from '../../utils/cockpitDataService';
 import { useMetricData, latestValueTransform } from '../../hooks/useMetricData';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 import { calculateAllProductInventory, type ProductInventoryResult } from '../../services/productInventoryCalculator';
 import { metricModelApi, createLastDaysRange } from '../../api';
 
-// 指标模型 ID 配置 - 根据数据模式使用不同的指标
+// 指标模型 ID 配置 - 惠达供应链大脑模式
 const METRIC_IDS = {
-  // Mock 数据模式：对接原有整套 API
-  mock: {
-    ORDER_DEMAND_COUNT: 'd5185bdg5lk40hvh48eg',
-    PRODUCT_COUNT: 'd51m8blg5lk40hvh48f0',
-    WAREHOUSE_COUNT: 'd51m9htg5lk40hvh48fg',
-    MATERIAL_COUNT: 'd51ma8dg5lk40hvh48g0',
-    SUPPLIER_COUNT: 'd51mb4tg5lk40hvh48gg',
-    // 产品库存分析明细（带维度）
-    PRODUCT_INVENTORY_DETAIL: 'd58keb5g5lk40hvh48og',
-  },
-  // 惠达供应链大脑模式：对接新的惠达数据 API
-  api: {
-    ORDER_DEMAND_COUNT: 'd58fu5lg5lk40hvh48kg',
-    PRODUCT_COUNT: 'd58fv0lg5lk40hvh48l0',
-    WAREHOUSE_COUNT: 'd51m9htg5lk40hvh48fg',  // TODO: 待提供新的仓库指标 ID
-    MATERIAL_COUNT: 'd58g085g5lk40hvh48lg',
-    SUPPLIER_COUNT: 'd58g53lg5lk40hvh48m0',
-    // 产品库存分析明细（带维度）
-    PRODUCT_INVENTORY_DETAIL: 'd58keb5g5lk40hvh48og',
-  }
+  ORDER_DEMAND_COUNT: 'd58fu5lg5lk40hvh48kg',
+  PRODUCT_COUNT: 'd58fv0lg5lk40hvh48l0',
+  WAREHOUSE_COUNT: 'd51m9htg5lk40hvh48fg',  // TODO: 待提供新的仓库指标 ID
+  MATERIAL_COUNT: 'd58g085g5lk40hvh48lg',
+  SUPPLIER_COUNT: 'd58g53lg5lk40hvh48m0',
+  // 产品库存分析明细（带维度）
+  PRODUCT_INVENTORY_DETAIL: 'd58keb5g5lk40hvh48og',
 };
 
 // 产品库存分析的分析维度
@@ -50,22 +37,15 @@ interface Props {
 }
 
 const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
-  // 获取当前数据模式 - MUST be before usage
-  const { mode } = useDataMode();
-
   const baseGraphData = useMemo(() => {
-    // API模式下不加载CSV数据，使用空结构（由后续的API数据填充）
-    if (mode === 'api') {
-      return [
-        { stageName: '订单需求', totalCount: 0, abnormalCount: 0, navigateTo: 'delivery' },
-        { stageName: '产品', totalCount: 0, abnormalCount: 0, navigateTo: 'optimization' },
-        { stageName: '仓库', totalCount: 0, abnormalCount: 0 },
-        { stageName: '物料', totalCount: 0, abnormalCount: 0 },
-        { stageName: '供应商', totalCount: 0, abnormalCount: 0, navigateTo: 'evaluation' },
-      ] as SupplyChainStageData[];
-    }
-    return getSupplyChainGraphData();
-  }, [mode]);
+    return [
+      { stageName: '订单需求', totalCount: 0, abnormalCount: 0, navigateTo: 'delivery' },
+      { stageName: '产品', totalCount: 0, abnormalCount: 0, navigateTo: 'optimization' },
+      { stageName: '仓库', totalCount: 0, abnormalCount: 0 },
+      { stageName: '物料', totalCount: 0, abnormalCount: 0 },
+      { stageName: '供应商', totalCount: 0, abnormalCount: 0, navigateTo: 'evaluation' },
+    ] as SupplyChainStageData[];
+  }, []);
 
 
 
@@ -82,8 +62,8 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
   // 物料库存弹窗状态
   const [showMaterialModal, setShowMaterialModal] = useState(false);
 
-  // 根据当前模式选择对应的指标 ID
-  const currentMetricIds = METRIC_IDS[mode];
+  // 使用全局配置的指标 ID
+  const currentMetricIds = METRIC_IDS;
 
   // 从真实 API 获取各阶段数量
   const {
@@ -146,22 +126,12 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
       };
     }
 
-    // 更新产品：惠达供应链大脑模式使用智能计算，Mock模式使用API
+    // 更新产品
     const productStageIndex = updatedData.findIndex(stage => stage.stageName === '产品');
     if (productStageIndex !== -1) {
-      let productCount;
-
-      if (mode === 'api') {
-        // 惠达供应链大脑模式：只使用智能计算，绝不使用API数据
-        productCount = productCountFromApi ?? updatedData[productStageIndex].totalCount;
-      } else {
-        // Mock模式：使用API数据
-        productCount = productCountFromApi ?? updatedData[productStageIndex].totalCount;
-      }
-
       updatedData[productStageIndex] = {
         ...updatedData[productStageIndex],
-        totalCount: productCount,
+        totalCount: productCountFromApi ?? updatedData[productStageIndex].totalCount,
       };
     }
 
@@ -195,7 +165,6 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
     return updatedData;
   }, [
     baseGraphData,
-    mode,
     orderDemandCountFromApi,
     productCountFromApi,
     warehouseCountFromApi,
@@ -217,7 +186,7 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
       setShowOrderModal(true);
       setOrderModalLoading(true);
       try {
-        const orders = await loadDeliveryOrdersByMode(mode);
+        const orders = await loadDeliveryOrders();
         setOrderModalData(orders);
       } catch (err) {
         console.error('Failed to load orders for modal:', err);
@@ -236,7 +205,7 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
         // 使用指标模型 API 获取产品库存数据
         const modelId = currentMetricIds.PRODUCT_INVENTORY_DETAIL;
         const timeRange = createLastDaysRange(1);
-        
+
         const result = await metricModelApi.queryByModelId(
           modelId,
           {
@@ -250,18 +219,18 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
 
         // 转换 API 数据为组件期望的格式
         const transformedData: ProductInventoryResult[] = [];
-        
+
         if (result.datas && result.datas.length > 0) {
           for (const series of result.datas) {
             const materialCode = series.labels?.material_code || '';
             const materialName = series.labels?.material_name || '';
             // 获取 available_quantity：可能在 labels 中作为维度，或在 values 中作为度量值
             let availableQuantity = 0;
-            
+
             // 优先从 labels 中获取（如果作为维度传递）
             if (series.labels?.available_quantity) {
               availableQuantity = parseFloat(series.labels.available_quantity) || 0;
-            } 
+            }
             // 其次从 values 中获取最新值（如果作为度量值）
             else if (series.values && series.values.length > 0) {
               // 取最后一个非空值
@@ -284,7 +253,7 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
 
         // 按库存量降序排序
         transformedData.sort((a, b) => b.calculatedStock - a.calculatedStock);
-        
+
         setProductModalData(transformedData);
       } catch (err) {
         console.error('Failed to load product inventory from API:', err);
@@ -364,7 +333,7 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
                         );
                       }
 
-                      if (mode === 'api' && error) {
+                      if (error) {
                         return (
                           <div className="flex flex-col">
                             <span className="text-lg font-bold text-red-600">Error</span>

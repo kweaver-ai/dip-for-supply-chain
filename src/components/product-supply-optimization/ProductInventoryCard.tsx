@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Loader2 } from 'lucide-react';
 import { metricModelApi, createLastDaysRange } from '../../api';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 
 interface Props {
     productId: string;
@@ -17,12 +17,10 @@ const PRODUCT_INVENTORY_DIMENSIONS = ['material_code', 'material_name', 'availab
 const SUPPORTED_PRODUCTS = ['T01-000055', 'T01-000167', 'T01-000173'];
 
 export const ProductInventoryCard: React.FC<Props> = ({ productId, defaultInventory, unit = '单位' }) => {
-    const { mode } = useDataMode();
-    const [loading, setLoading] = useState(false);
-    const [inventoryCount, setInventoryCount] = useState<number | null>(null);
-
     // Determine if we should use API mode for this product
-    const shouldUseApi = mode === 'api' && SUPPORTED_PRODUCTS.includes(productId);
+    const shouldUseApi = SUPPORTED_PRODUCTS.includes(productId);
+    const [inventoryCount, setInventoryCount] = useState<number | null>(null);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (!shouldUseApi) {
@@ -52,7 +50,7 @@ export const ProductInventoryCard: React.FC<Props> = ({ productId, defaultInvent
                 if (result.datas && result.datas.length > 0) {
                     for (const series of result.datas) {
                         const materialCode = series.labels?.material_code || '';
-                        
+
                         // 匹配产品 ID
                         if (materialCode === productId) {
                             // 获取 available_quantity
@@ -84,7 +82,7 @@ export const ProductInventoryCard: React.FC<Props> = ({ productId, defaultInvent
         };
 
         fetchInventory();
-    }, [productId, mode, shouldUseApi]);
+    }, [productId, shouldUseApi]);
 
     // Display value: API result (if available) or default prop
     const displayValue = shouldUseApi && inventoryCount !== null ? inventoryCount : defaultInventory;

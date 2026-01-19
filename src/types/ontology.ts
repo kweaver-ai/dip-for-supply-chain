@@ -632,6 +632,12 @@ export interface ProductLifecycleAssessment {
   stock: string;                        // Stock level description (e.g., "High (120台)")
   actionType: ProductActionType;         // Recommended action type
   suggestion: string;                   // Action suggestion description
+
+  // Extended metrics
+  salesTrend?: 'increasing' | 'decreasing' | 'stable';
+  marketShare?: number;
+  profitMargin?: number;
+  recommendation?: string; // Legacy field, map to suggestion
 }
 
 /**

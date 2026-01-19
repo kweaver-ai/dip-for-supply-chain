@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Loader2, AlertCircle } from 'lucide-react';
 import { metricModelApi, createLastDaysRange } from '../../api';
-import { useDataMode } from '../../contexts/DataModeContext';
+
 import { OrderAnalysisModal } from './OrderAnalysisModal';
 
 interface Props {
@@ -16,7 +16,6 @@ const PRODUCT_METRIC_MAP: Record<string, string> = {
 };
 
 export const ProductOrderCountCard: React.FC<Props> = ({ productId }) => {
-    const { mode } = useDataMode();
     const [loading, setLoading] = useState(false);
     const [orderCount, setOrderCount] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -26,8 +25,8 @@ export const ProductOrderCountCard: React.FC<Props> = ({ productId }) => {
 
     // Initial Fetch (Brain Mode API)
     useEffect(() => {
-        // Only fetch in API mode and if the product has a mapping
-        if (mode !== 'api' || !PRODUCT_METRIC_MAP[productId]) {
+        // Only fetch if the product has a mapping
+        if (!PRODUCT_METRIC_MAP[productId]) {
             setOrderCount(null);
             return;
         }
@@ -71,16 +70,16 @@ export const ProductOrderCountCard: React.FC<Props> = ({ productId }) => {
         };
 
         fetchOrderCount();
-    }, [productId, mode]);
+    }, [productId]);
 
     // Handle Click - 打开弹窗，Modal 内部自己获取详细数据
     const handleClick = () => {
-        if (mode !== 'api' || error || loading) return;
+        if (error || loading) return;
         setShowModal(true);
     };
 
-    // Don't render anything if not in API mode or no mapping
-    if (mode !== 'api' || !PRODUCT_METRIC_MAP[productId]) {
+    // Don't render anything if no mapping
+    if (!PRODUCT_METRIC_MAP[productId]) {
         return null;
     }
 
