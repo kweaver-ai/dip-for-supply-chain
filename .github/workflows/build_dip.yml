@@ -54,5 +54,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dip-package
-        path: buildkit/.cache/**/package/*.dip
+        path: buildkit/.cache/**/*.dip
         if-no-files-found: error
