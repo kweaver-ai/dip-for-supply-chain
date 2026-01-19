@@ -9,8 +9,13 @@ coverage/
 .cursor/
 *.log
 
-# Test files
+# Test files - ignore all files starting with test (anywhere)
+**/test-*
+**/test_*
+**/test[A-Z]*
 test-*
+test_*
+test[A-Z]*
 
 # Python virtual environment
 venv/
