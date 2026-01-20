@@ -33,40 +33,34 @@ const MENU_ITEMS = [
     group: '可视化'
   },
   {
-    id: 'global_settings',
-    label: '全局设置',
-    icon: Key,
-    group: '系统配置'
-  },
-  {
     id: ApiConfigType.KNOWLEDGE_NETWORK,
     label: '业务知识网络配置',
     icon: Settings,
-    group: '系统配置'
-  },
-  {
-    id: ApiConfigType.ONTOLOGY_OBJECT,
-    label: '业务知识网络对象类',
-    icon: Database,
-    group: '系统配置'
-  },
-  {
-    id: ApiConfigType.METRIC_MODEL,
-    label: '业务知识网络指标模型',
-    icon: BarChart2,
-    group: '系统配置'
+    group: '本体模型',
+    subItems: [
+      {
+        id: ApiConfigType.ONTOLOGY_OBJECT,
+        label: '业务对象类',
+        icon: Database,
+      },
+      {
+        id: ApiConfigType.METRIC_MODEL,
+        label: '指标模型',
+        icon: BarChart2,
+      }
+    ]
   },
   {
     id: ApiConfigType.AGENT,
     label: 'Decision Agent 配置',
     icon: Bot,
-    group: '系统配置'
+    group: '智能体与工作流'
   },
   {
     id: ApiConfigType.WORKFLOW,
     label: 'Workflow 配置',
     icon: Workflow,
-    group: '系统配置'
+    group: '智能体与工作流'
   }
 ];
 
@@ -132,7 +126,6 @@ export default function ConfigBackendLayout({ onBack }: ConfigBackendLayoutProps
         className={`${isSidebarOpen ? 'w-64' : 'w-16'
           } bg-slate-900 text-white transition-all duration-300 flex flex-col shadow-lg z-20`}
       >
-        {/* Sidebar Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
           {isSidebarOpen && (
             <div className="flex items-center gap-2 font-bold text-lg">
@@ -140,34 +133,90 @@ export default function ConfigBackendLayout({ onBack }: ConfigBackendLayoutProps
               <span>配置中心</span>
             </div>
           )}
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            <Menu size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setActiveView('global_settings')}
+              className={`p-1.5 rounded-lg transition-colors ${activeView === 'global_settings'
+                ? 'bg-indigo-600 text-white'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              title="全局设置"
+            >
+              <Key size={18} />
+            </button>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              <Menu size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-4">
-          <div className="space-y-1 px-2">
-            {MENU_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeView === item.id;
+          <div className="space-y-6 px-2">
+            {['可视化', '本体模型', '智能体与工作流'].map(group => {
+              const groupItems = MENU_ITEMS.filter(i => i.group === group);
+              if (groupItems.length === 0) return null;
 
               return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveView(item.id as ConfigViewType)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
-                    ? 'bg-indigo-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                  title={!isSidebarOpen ? item.label : undefined}
-                >
-                  <Icon size={20} />
-                  {isSidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
-                </button>
+                <div key={group} className="space-y-1">
+                  {isSidebarOpen && (
+                    <div className="px-3 mb-2">
+                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        {group}
+                      </span>
+                    </div>
+                  )}
+                  {groupItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeView === item.id;
+                    const hasSubItems = item.subItems && item.subItems.length > 0;
+                    const isAnySubItemActive = item.subItems?.some(si => si.id === activeView);
+
+                    return (
+                      <div key={item.id} className="space-y-1">
+                        <button
+                          onClick={() => setActiveView(item.id as ConfigViewType)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : isAnySubItemActive && isSidebarOpen
+                              ? 'text-white'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            }`}
+                          title={!isSidebarOpen ? item.label : undefined}
+                        >
+                          <Icon size={18} />
+                          {isSidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                        </button>
+
+                        {/* Rendering Sub Items */}
+                        {isSidebarOpen && hasSubItems && (
+                          <div className="ml-4 pl-4 border-l border-slate-700 space-y-1 mt-1">
+                            {item.subItems!.map(subItem => {
+                              const SubIcon = subItem.icon;
+                              const isSubActive = activeView === subItem.id;
+                              return (
+                                <button
+                                  key={subItem.id}
+                                  onClick={() => setActiveView(subItem.id as ConfigViewType)}
+                                  className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors ${isSubActive
+                                    ? 'bg-slate-700 text-indigo-400'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                    }`}
+                                >
+                                  <SubIcon size={14} />
+                                  <span>{subItem.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>
