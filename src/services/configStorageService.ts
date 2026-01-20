@@ -108,7 +108,8 @@ class ConfigStorageService {
                         'oo_product_huida': 'd56v4ue9olk4bpa66v00',
                         'oo_bom_huida': 'd56vqtm9olk4bpa66vfg',
                         'oo_inventory_huida': 'd56vcuu9olk4bpa66v3g',
-                        'oo_material_huida': 'd56voju9olk4bpa66vcg'
+                        'oo_material_huida': 'd56voju9olk4bpa66vcg',
+                        'oo_supplier_huida': 'd5700je9olk4bpa66vkg'
                     };
 
                     let updatedCount = 0;
@@ -440,7 +441,7 @@ class ConfigStorageService {
                     type: ApiConfigType.ONTOLOGY_OBJECT,
                     name: '惠达供应商对象',
                     description: '惠达供应链大脑 - 供应商对象类型',
-                    objectTypeId: '2004376134633480193',
+                    objectTypeId: 'd5700je9olk4bpa66vkg',
                     entityType: 'supplier',
                     enabled: true,
                     tags: ['huida', 'supplier'],

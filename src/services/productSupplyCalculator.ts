@@ -60,6 +60,8 @@ export interface BOMInfo {
     quantity: number;
     unit: string;
     status: string;
+    alternative_part?: string;
+    alternative_group?: number;
 }
 
 /** 库存信息 */
@@ -73,6 +75,12 @@ export interface InventoryInfo {
     warehouse_name: string;
     snapshot_month: string;
     status: string;
+}
+
+export interface MaterialInfo {
+    material_code: string;
+    material_name: string;
+    material_type: string;
 }
 
 /** 库存状态分析 */
@@ -160,6 +168,63 @@ export interface DemandForecast {
     confidence: number;
 }
 
+export interface SupplierMatchSummaryItem {
+    supplier_code: string;
+    supplier: string;
+    coveredMaterialCount: number;
+    coverageRatio: number; // coveredMaterialCount / totalMaterials
+}
+
+export interface SupplierMatchResult {
+    productCode: string;
+    materials: string[]; // expanded BOM materials (normalized)
+    missingMaterials: string[]; // materials without any supplier match (normalized)
+    supplierCount: number; // distinct suppliers matched
+    topSupplierCoverageRatio: number; // max(coveredMaterialCount/totalMaterials)
+    supplierSummary: SupplierMatchSummaryItem[];
+}
+
+export type MaterialType = '自制' | '委外' | '外购' | '未知';
+
+export interface SupplierRow {
+    supplier_code: string;
+    supplier: string;
+    unit_price_with_tax?: number;
+    payment_terms?: string;
+    is_basic_material?: string;
+    is_lowest_price_alternative?: string;
+}
+
+export interface AlternativeMaterialRow {
+    material_code: string;
+    material_name?: string;
+    material_type: MaterialType;
+    suppliers: SupplierRow[];
+}
+
+export interface ExpandedMaterialRow {
+    depth: number;
+    material_code: string;
+    material_name?: string;
+    material_type: MaterialType;
+    suppliers: SupplierRow[];
+    hasAlternatives: boolean;
+    alternatives: AlternativeMaterialRow[];
+    alternativesAssociationApproximate?: boolean;
+    isMissingSupplier: boolean;
+    isBasicMaterial?: boolean;
+}
+
+export interface SupplierDetailPanelModel {
+    product_code: string;
+    product_name?: string;
+    totalMaterials: number;
+    nonSelfMadeMaterials: number;
+    supplierCount: number;
+    missingMaterials: number;
+    materials: ExpandedMaterialRow[];
+}
+
 /** 综合产品供应分析 */
 export interface ProductSupplyAnalysis {
     productId: string;
@@ -171,6 +236,8 @@ export interface ProductSupplyAnalysis {
     npiRecommendation: NPIRecommendation;
     eolRecommendation: EOLRecommendation;
     demandForecast: DemandForecast;
+    supplierMatch?: SupplierMatchResult;
+    supplierDetailPanel?: SupplierDetailPanelModel;
 }
 
 // ============================================================================
@@ -178,6 +245,7 @@ export interface ProductSupplyAnalysis {
 // ============================================================================
 
 import { ontologyApi } from '../api/ontologyApi';
+import { dataViewApi } from '../api/dataViewApi';
 import { apiConfigService } from './apiConfigService';
 
 /**
@@ -193,13 +261,30 @@ const getObjectTypeId = (entityType: string, defaultId: string) => {
     return defaultId;
 };
 
+const isNumericId = (id: string) => /^\d+$/.test(id);
+const normalizeCode = (value: unknown): string => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .trim()
+        .normalize('NFKC')
+        .replace(/\s+/g, '')
+        .toUpperCase();
+};
+
+const isAlternativeBomRow = (bom: BOMInfo): boolean => {
+    const alt = normalizeCode(bom.alternative_part);
+    return alt.includes('替代');
+};
+
 // 默认ID作为后备
 const DEFAULT_IDS = {
     product: 'd56v4ue9olk4bpa66v00',
     sales_order: 'd56vh169olk4bpa66v80',
-    supplier: '2004376134633480193',
+    // Supplier ObjectTypeId from HD供应链业务知识网络.json
+    supplier: 'd5700je9olk4bpa66vkg',
     bom: 'd56vqtm9olk4bpa66vfg',
     inventory: 'd56vcuu9olk4bpa66v3g',
+    material: 'd56voju9olk4bpa66vcg',
 };
 
 /**
@@ -211,7 +296,7 @@ async function loadDataFromOntology<T>(entityType: string, defaultId: string, ma
         const objectTypeId = getObjectTypeId(entityType, defaultId);
 
         // 使用防御性加载逻辑 (Safe Mode fallback)
-        let response;
+        let response: { entries?: any[] };
         try {
             response = await ontologyApi.queryObjectInstances(objectTypeId, {
                 limit: 2000,
@@ -219,13 +304,30 @@ async function loadDataFromOntology<T>(entityType: string, defaultId: string, ma
                 include_logic_params: false
             });
         } catch (firstError) {
-            console.warn(`[API] ${name} 加载失败，尝试简化请求回退...`, firstError);
-            response = await ontologyApi.queryObjectInstances(objectTypeId, {
-                limit: 500,
-                include_type_info: false,
-                include_logic_params: false
-            });
-            console.log(`[API] ${name} 回退加载成功`);
+            if (isNumericId(objectTypeId)) {
+                console.warn(`[API] ${name} Ontology对象查询失败，检测到数字ID，尝试以数据视图(DataView)方式回退...`, firstError);
+                try {
+                    const dv = await dataViewApi.queryDataView(objectTypeId, { limit: 5000 });
+                    response = { entries: dv.entries || [] };
+                    console.log(`[API] ${name} DataView 回退加载成功`);
+                } catch (dvError) {
+                    console.warn(`[API] ${name} DataView 回退也失败，尝试简化Ontology请求回退...`, dvError);
+                    response = await ontologyApi.queryObjectInstances(objectTypeId, {
+                        limit: 500,
+                        include_type_info: false,
+                        include_logic_params: false
+                    });
+                    console.log(`[API] ${name} 简化Ontology 回退加载成功`);
+                }
+            } else {
+                console.warn(`[API] ${name} 加载失败，尝试简化请求回退...`, firstError);
+                response = await ontologyApi.queryObjectInstances(objectTypeId, {
+                    limit: 500,
+                    include_type_info: false,
+                    include_logic_params: false
+                });
+                console.log(`[API] ${name} 回退加载成功`);
+            }
         }
 
         const rawData = response.entries || [];
@@ -291,7 +393,7 @@ export async function loadOrderInfo(): Promise<OrderInfo[]> {
  */
 /**
  * 加载供应商信息 (API)
- * ID: 2004376134633480193
+ * ObjectTypeId: d5700je9olk4bpa66vkg
  */
 export async function loadSupplierInfo(): Promise<SupplierInfo[]> {
     return loadDataFromOntology('supplier', DEFAULT_IDS.supplier, (item) => ({
@@ -326,6 +428,8 @@ export async function loadBOMInfo(): Promise<BOMInfo[]> {
         quantity: parseFloat(item.quantity) || 0,
         unit: item.unit || '',
         status: item.status || 'Active',
+        alternative_part: item.alternative_part,
+        alternative_group: item.alternative_group !== undefined ? Number(item.alternative_group) : undefined,
     }), 'BOM信息');
 }
 
@@ -348,6 +452,311 @@ export async function loadInventoryInfo(): Promise<InventoryInfo[]> {
         snapshot_month: item.snapshot_month || '',
         status: item.status || 'Active',
     }), '库存信息');
+}
+
+export async function loadMaterialInfo(): Promise<MaterialInfo[]> {
+    return loadDataFromOntology('material', DEFAULT_IDS.material, (item) => ({
+        material_code: item.material_code || '',
+        material_name: item.material_name || '',
+        material_type: item.material_type || '',
+    }), '物料信息');
+}
+
+type BomChildrenIndex = Map<string, Set<string>>;
+type SuppliersByMaterialIndex = Map<string, SupplierInfo[]>;
+
+function buildBomChildrenIndex(boms: BOMInfo[]): BomChildrenIndex {
+    const index: BomChildrenIndex = new Map();
+    for (const bom of boms) {
+        if (isAlternativeBomRow(bom)) continue;
+        const parent = normalizeCode(bom.parent_code);
+        const child = normalizeCode(bom.child_code);
+        if (!parent || !child) continue;
+        const set = index.get(parent) ?? new Set<string>();
+        set.add(child);
+        index.set(parent, set);
+    }
+    return index;
+}
+
+function buildSuppliersByMaterialIndex(suppliers: SupplierInfo[]): SuppliersByMaterialIndex {
+    const index: SuppliersByMaterialIndex = new Map();
+    for (const supplier of suppliers) {
+        const materialCode = normalizeCode(supplier.provided_material_code);
+        if (!materialCode) continue;
+        const list = index.get(materialCode) ?? [];
+        list.push(supplier);
+        index.set(materialCode, list);
+    }
+    return index;
+}
+
+function toMaterialType(value: unknown): MaterialType {
+    const v = normalizeCode(value);
+    if (!v) return '未知';
+    if (v.includes('自制')) return '自制';
+    if (v.includes('委外')) return '委外';
+    if (v.includes('外购')) return '外购';
+    return '未知';
+}
+
+function expandBomMaterialsWithDepth(
+    rootProductCode: string,
+    bomChildrenByParent: BomChildrenIndex,
+    maxDepth: number = 10
+): { materials: Set<string>; depthByCode: Map<string, number>; visitedParents: Set<string> } {
+    const root = normalizeCode(rootProductCode);
+    if (!root) return { materials: new Set(), depthByCode: new Map(), visitedParents: new Set() };
+
+    const visitedParents = new Set<string>();
+    const materials = new Set<string>();
+    const depthByCode = new Map<string, number>();
+    const queue: Array<{ code: string; depth: number }> = [{ code: root, depth: 0 }];
+
+    while (queue.length > 0) {
+        const current = queue.shift()!;
+        if (visitedParents.has(current.code)) continue;
+        visitedParents.add(current.code);
+
+        if (current.depth >= maxDepth) continue;
+
+        const children = bomChildrenByParent.get(current.code);
+        if (!children) continue;
+
+        for (const child of children) {
+            if (!child) continue;
+            materials.add(child);
+            if (!depthByCode.has(child)) depthByCode.set(child, current.depth + 1);
+            queue.push({ code: child, depth: current.depth + 1 });
+        }
+    }
+
+    return { materials, depthByCode, visitedParents };
+}
+
+function buildSupplierMatchResult(
+    productCode: string,
+    materials: Set<string>,
+    suppliersByMaterial: SuppliersByMaterialIndex
+): SupplierMatchResult {
+    const materialList = Array.from(materials.values());
+    const missingMaterials: string[] = [];
+
+    const coveredCountBySupplier = new Map<string, number>();
+    const supplierNameByCode = new Map<string, string>();
+
+    for (const materialCode of materialList) {
+        const matchedSuppliers = suppliersByMaterial.get(materialCode);
+        if (!matchedSuppliers || matchedSuppliers.length === 0) {
+            missingMaterials.push(materialCode);
+            continue;
+        }
+
+        const supplierCodesForThisMaterial = new Set<string>();
+        for (const s of matchedSuppliers) {
+            const supplierCode = normalizeCode(s.supplier_code);
+            if (!supplierCode) continue;
+            supplierCodesForThisMaterial.add(supplierCode);
+            if (!supplierNameByCode.has(supplierCode)) {
+                supplierNameByCode.set(supplierCode, s.supplier || s.supplier_code);
+            }
+        }
+
+        for (const supplierCode of supplierCodesForThisMaterial) {
+            coveredCountBySupplier.set(supplierCode, (coveredCountBySupplier.get(supplierCode) ?? 0) + 1);
+        }
+    }
+
+    const totalMaterials = materialList.length || 1;
+    const supplierSummary: SupplierMatchSummaryItem[] = Array.from(coveredCountBySupplier.entries())
+        .map(([supplier_code, coveredMaterialCount]) => ({
+            supplier_code,
+            supplier: supplierNameByCode.get(supplier_code) || supplier_code,
+            coveredMaterialCount,
+            coverageRatio: coveredMaterialCount / totalMaterials,
+        }))
+        .sort((a, b) => b.coveredMaterialCount - a.coveredMaterialCount);
+
+    const supplierCount = supplierSummary.length;
+    const topSupplierCoverageRatio = supplierSummary[0]?.coverageRatio ?? 0;
+
+    return {
+        productCode: normalizeCode(productCode),
+        materials: materialList,
+        missingMaterials,
+        supplierCount,
+        topSupplierCoverageRatio,
+        supplierSummary,
+    };
+}
+
+function buildMaterialMasterIndex(materials: MaterialInfo[]): Map<string, MaterialInfo> {
+    const index = new Map<string, MaterialInfo>();
+    for (const m of materials) {
+        const code = normalizeCode(m.material_code);
+        if (!code) continue;
+        index.set(code, m);
+    }
+    return index;
+}
+
+function buildAlternativesIndex(
+    boms: BOMInfo[],
+    visitedParents: Set<string>
+): {
+    byParentAndGroup: Map<string, Map<number, { mains: Set<string>; alternatives: Set<string> }>>;
+    fallbackAlternativesByParent: Map<string, Set<string>>;
+    mainsByParent: Map<string, Set<string>>;
+} {
+    const byParentAndGroup = new Map<string, Map<number, { mains: Set<string>; alternatives: Set<string> }>>();
+    const fallbackAlternativesByParent = new Map<string, Set<string>>();
+    const mainsByParent = new Map<string, Set<string>>();
+
+    for (const bom of boms) {
+        const parent = normalizeCode(bom.parent_code);
+        if (!parent || !visitedParents.has(parent)) continue;
+
+        const child = normalizeCode(bom.child_code);
+        if (!child) continue;
+
+        const altFlag = normalizeCode(bom.alternative_part);
+        const isMain = altFlag === '';
+        const isAlt = altFlag === '替代';
+        if (!isMain && !isAlt) continue;
+
+        if (isMain) {
+            const set = mainsByParent.get(parent) ?? new Set<string>();
+            set.add(child);
+            mainsByParent.set(parent, set);
+        }
+
+        const group = bom.alternative_group;
+        const hasGroup = group !== undefined && group !== null && !Number.isNaN(Number(group));
+        if (!hasGroup) {
+            if (isAlt) {
+                const set = fallbackAlternativesByParent.get(parent) ?? new Set<string>();
+                set.add(child);
+                fallbackAlternativesByParent.set(parent, set);
+            }
+            continue;
+        }
+
+        const groupId = Number(group);
+        const groupMap = byParentAndGroup.get(parent) ?? new Map<number, { mains: Set<string>; alternatives: Set<string> }>();
+        const entry = groupMap.get(groupId) ?? { mains: new Set<string>(), alternatives: new Set<string>() };
+
+        if (isMain) entry.mains.add(child);
+        if (isAlt) entry.alternatives.add(child);
+
+        groupMap.set(groupId, entry);
+        byParentAndGroup.set(parent, groupMap);
+    }
+
+    return { byParentAndGroup, fallbackAlternativesByParent, mainsByParent };
+}
+
+function buildSupplierRowsForMaterial(materialCode: string, suppliersByMaterial: SuppliersByMaterialIndex): SupplierRow[] {
+    const list = suppliersByMaterial.get(materialCode) ?? [];
+    return list.map((s) => ({
+        supplier_code: s.supplier_code,
+        supplier: s.supplier,
+        unit_price_with_tax: s.unit_price_with_tax,
+        payment_terms: s.payment_terms,
+        is_basic_material: s.is_basic_material,
+        is_lowest_price_alternative: s.is_lowest_price_alternative,
+    }));
+}
+
+function buildSupplierDetailPanelModel(
+    productCode: string,
+    productName: string,
+    materials: Set<string>,
+    depthByCode: Map<string, number>,
+    visitedParents: Set<string>,
+    boms: BOMInfo[],
+    materialMasterByCode: Map<string, MaterialInfo>,
+    suppliersByMaterial: SuppliersByMaterialIndex,
+    supplierMatch?: SupplierMatchResult
+): SupplierDetailPanelModel {
+    const { byParentAndGroup, fallbackAlternativesByParent, mainsByParent } = buildAlternativesIndex(boms, visitedParents);
+
+    const alternativeCodesByMainMaterial = new Map<string, Set<string>>();
+    const approximateAlternativeAssociation = new Set<string>();
+    for (const [, groupMap] of byParentAndGroup.entries()) {
+        for (const [, groupEntry] of groupMap.entries()) {
+            for (const mainCode of groupEntry.mains) {
+                const set = alternativeCodesByMainMaterial.get(mainCode) ?? new Set<string>();
+                for (const altCode of groupEntry.alternatives) set.add(altCode);
+                alternativeCodesByMainMaterial.set(mainCode, set);
+            }
+        }
+    }
+
+    // Fallback: if alternative_group is missing, show all alternatives under the same parent_code for every main under that parent_code.
+    for (const [parent, altSet] of fallbackAlternativesByParent.entries()) {
+        const mains = mainsByParent.get(parent);
+        if (!mains || mains.size === 0) continue;
+        for (const mainCode of mains) {
+            const set = alternativeCodesByMainMaterial.get(mainCode) ?? new Set<string>();
+            for (const altCode of altSet) set.add(altCode);
+            alternativeCodesByMainMaterial.set(mainCode, set);
+            approximateAlternativeAssociation.add(mainCode);
+        }
+    }
+
+    const rows: ExpandedMaterialRow[] = Array.from(materials.values()).map((materialCode) => {
+        const master = materialMasterByCode.get(materialCode);
+        const material_type = toMaterialType(master?.material_type);
+        const material_name = master?.material_name || undefined;
+
+        const hasAlternatives = (alternativeCodesByMainMaterial.get(materialCode)?.size ?? 0) > 0;
+        const alternativeCodes = Array.from(alternativeCodesByMainMaterial.get(materialCode)?.values() ?? []);
+        const alternativesAssociationApproximate = approximateAlternativeAssociation.has(materialCode);
+        const alternatives: AlternativeMaterialRow[] = alternativeCodes.map((altCode) => {
+            const altMaster = materialMasterByCode.get(altCode);
+            const altType = toMaterialType(altMaster?.material_type);
+            const suppliers = altType === '自制' ? [] : buildSupplierRowsForMaterial(altCode, suppliersByMaterial);
+            return {
+                material_code: altCode,
+                material_name: altMaster?.material_name,
+                material_type: altType,
+                suppliers,
+            };
+        });
+
+        const suppliers = material_type === '自制' ? [] : buildSupplierRowsForMaterial(materialCode, suppliersByMaterial);
+        const isMissingSupplier = material_type !== '自制' && suppliers.length === 0;
+        const isBasicMaterial =
+            suppliers.length > 0 ? suppliers.some(s => normalizeCode(s.is_basic_material) === '是') : undefined;
+
+        return {
+            depth: depthByCode.get(materialCode) ?? 1,
+            material_code: materialCode,
+            material_name,
+            material_type,
+            suppliers,
+            hasAlternatives,
+            alternatives,
+            alternativesAssociationApproximate: hasAlternatives ? alternativesAssociationApproximate : undefined,
+            isMissingSupplier,
+            isBasicMaterial,
+        };
+    });
+
+    rows.sort((a, b) => a.depth - b.depth || a.material_code.localeCompare(b.material_code));
+
+    const nonSelfMadeMaterials = rows.filter(r => r.material_type !== '自制').length;
+    const missingMaterials = rows.filter(r => r.isMissingSupplier).length;
+
+    return {
+        product_code: normalizeCode(productCode),
+        product_name: productName,
+        totalMaterials: rows.length,
+        nonSelfMadeMaterials,
+        supplierCount: supplierMatch?.supplierCount ?? 0,
+        missingMaterials,
+        materials: rows,
+    };
 }
 
 // ============================================================================
@@ -534,7 +943,7 @@ export function calculateInventoryStatus(
 export function calculateSupplyRisk(
     productCode: string,
     orders: OrderInfo[],
-    suppliers: SupplierInfo[],
+    supplierMatch?: SupplierMatchResult,
     bottleneckMaterials: string[] = []
 ): SupplyRisk {
     const productOrders = orders.filter(o => o.product_code === productCode);
@@ -555,10 +964,14 @@ export function calculateSupplyRisk(
 
     const onTimeRate = totalDeliveries > 0 ? onTimeDeliveries / totalDeliveries : 1;
 
+    const supplierCount = supplierMatch?.supplierCount ?? 0;
+    const missingMaterials = supplierMatch?.missingMaterials ?? [];
+    const topSupplierCoverageRatio = supplierMatch?.topSupplierCoverageRatio ?? 0;
+
     // 风险因素评估
     const riskFactors = {
-        materialShortage: bottleneckMaterials.length > 0,
-        supplierConcentration: suppliers.length < 3,
+        materialShortage: bottleneckMaterials.length > 0 || missingMaterials.length > 0,
+        supplierConcentration: supplierCount <= 2 || topSupplierCoverageRatio >= 0.6,
         longLeadTime: onTimeRate < 0.8,
         priceVolatility: false,  // 需要历史价格数据
     };
@@ -581,7 +994,7 @@ export function calculateSupplyRisk(
         riskLevel,
         riskScore,
         riskFactors,
-        bottleneckMaterials,
+        bottleneckMaterials: Array.from(new Set([...bottleneckMaterials, ...missingMaterials])),
     };
 }
 
@@ -788,9 +1201,29 @@ export async function calculateAllProductsSupplyAnalysis(): Promise<ProductSuppl
             loadInventoryInfo(),
         ]);
 
+        const materials = await loadMaterialInfo();
+
+        const bomChildrenByParent = buildBomChildrenIndex(boms);
+        const suppliersByMaterial = buildSuppliersByMaterialIndex(suppliers);
+        const materialMasterByCode = buildMaterialMasterIndex(materials);
+
         const analyses: ProductSupplyAnalysis[] = [];
 
         for (const product of products) {
+            const { materials: expandedMaterials, depthByCode, visitedParents } = expandBomMaterialsWithDepth(product.product_code, bomChildrenByParent, 10);
+            const supplierMatch = buildSupplierMatchResult(product.product_code, expandedMaterials, suppliersByMaterial);
+            const supplierDetailPanel = buildSupplierDetailPanelModel(
+                product.product_code,
+                product.product_name,
+                expandedMaterials,
+                depthByCode,
+                visitedParents,
+                boms,
+                materialMasterByCode,
+                suppliersByMaterial,
+                supplierMatch
+            );
+
             // 计算需求趋势
             const demandTrend = calculateDemandTrend(product.product_code, orders);
 
@@ -813,7 +1246,7 @@ export async function calculateAllProductsSupplyAnalysis(): Promise<ProductSuppl
             const supplyRisk = calculateSupplyRisk(
                 product.product_code,
                 orders,
-                suppliers,
+                supplierMatch,
                 bottleneckMaterials
             );
 
@@ -847,6 +1280,8 @@ export async function calculateAllProductsSupplyAnalysis(): Promise<ProductSuppl
                 npiRecommendation,
                 eolRecommendation,
                 demandForecast,
+                supplierMatch,
+                supplierDetailPanel,
             });
         }
 

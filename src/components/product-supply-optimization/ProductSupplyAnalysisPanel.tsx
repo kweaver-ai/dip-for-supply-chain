@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import type { ProductSupplyAnalysis, DemandForecast, Product, ProductLifecycleAssessment } from '../../types/ontology';
+import type { ProductSupplyAnalysis, DemandForecast } from '../../types/ontology';
+import type { SupplierDetailPanelModel } from '../../services/productSupplyCalculator';
 import { Package, Sparkles, Search } from 'lucide-react';
-import { ProductBasicInfoSection } from './ProductBasicInfoSection';
-import { ProductInventoryInfoSection } from './ProductInventoryInfoSection';
-import { ProductSuggestedActionsSection } from './ProductSuggestedActionsSection';
 import { ProductSupplyMetricsCards } from './ProductSupplyMetricsCards';
 import { ProductDemandForecastCard } from './ProductDemandForecastCard';
 import { ProductDemandForecastPanelNew } from './ProductDemandForecastPanelNew';
@@ -17,8 +15,7 @@ interface Props {
   selectedProductId?: string | null;
   onProductSelect?: (productId: string) => void;
   demandForecasts?: Map<string, DemandForecast>;
-  product?: Product | null;
-  productLifecycleAssessment?: ProductLifecycleAssessment | null;
+  supplierDetailPanels?: Map<string, SupplierDetailPanelModel>;
 }
 
 export const ProductSupplyAnalysisPanel: React.FC<Props> = ({
@@ -28,8 +25,7 @@ export const ProductSupplyAnalysisPanel: React.FC<Props> = ({
   selectedProductId = null,
   onProductSelect,
   demandForecasts = new Map(),
-  product = null,
-  productLifecycleAssessment = null
+  supplierDetailPanels = new Map(),
 }) => {
 
   // AI suggestions
@@ -115,29 +111,10 @@ export const ProductSupplyAnalysisPanel: React.FC<Props> = ({
       )}
 
       {/* Product Supply Metrics Cards */}
-      {analysis && <ProductSupplyMetricsCards analysis={analysis} />}
-
-      {/* Product Basic Information Section (FR-001.2) */}
-      {analysis && product && (
-        <ProductBasicInfoSection
-          product={product}
-          productLifecycleAssessment={productLifecycleAssessment || null}
-        />
-      )}
-
-      {/* Product Inventory Information Section (FR-001.3) */}
-      {analysis && product && selectedProductId && (
-        <ProductInventoryInfoSection
-          product={product}
-          productId={selectedProductId}
-        />
-      )}
-
-      {/* Product Suggested Actions Section (FR-001.4, FR-001.5) */}
-      {analysis && product && selectedProductId && (
-        <ProductSuggestedActionsSection
-          product={product}
-          productId={selectedProductId}
+      {analysis && (
+        <ProductSupplyMetricsCards
+          analysis={analysis}
+          supplierDetailPanel={supplierDetailPanels.get(analysis.productId)}
         />
       )}
 
@@ -155,4 +132,3 @@ export const ProductSupplyAnalysisPanel: React.FC<Props> = ({
     </div >
   );
 };
-

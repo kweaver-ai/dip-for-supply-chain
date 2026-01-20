@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ProductSupplyAnalysisPanel } from './ProductSupplyAnalysisPanel';
-import { getAllProductsSupplyAnalysis, getProductLifecycleAssessment } from '../../services/productSupplyService';
-import { calculateMultipleForecastModels } from '../../services/demandForecastService';
-import type { ProductSupplyAnalysis, DemandForecast, Product, ProductLifecycleAssessment } from '../../types/ontology';
-import { loadProductEntities, loadBOMEvents, loadInventoryEvents } from '../../services/ontologyDataService';
+import type { ProductSupplyAnalysis, DemandForecast } from '../../types/ontology';
+import type { SupplierDetailPanelModel } from '../../services/productSupplyCalculator';
 import { Filter, Download, Layers, MessageSquare } from 'lucide-react';
 
 export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => void }> = ({ toggleCopilot }) => {
@@ -12,7 +10,7 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
   const [demandForecasts, setDemandForecasts] = useState<Map<string, DemandForecast>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [supplierDetailPanels, setSupplierDetailPanels] = useState<Map<string, SupplierDetailPanelModel>>(new Map());
 
   // 唯一的数据加载useEffect
   useEffect(() => {
@@ -30,6 +28,14 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
         const { calculateAllProductsSupplyAnalysis } = await import('../../services/productSupplyCalculator');
         const smartAnalyses = await calculateAllProductsSupplyAnalysis();
 
+        const supplierPanels = new Map<string, SupplierDetailPanelModel>();
+        smartAnalyses.forEach(analysis => {
+          if (analysis.supplierDetailPanel) {
+            supplierPanels.set(analysis.productId, analysis.supplierDetailPanel);
+          }
+        });
+        setSupplierDetailPanels(supplierPanels);
+
         // 转换分析数据
         analysisData = smartAnalyses.map(analysis => ({
           productId: analysis.productId,
@@ -40,7 +46,7 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
           demandTrend: analysis.demandTrend.demandGrowthRate > 0 ? 'increasing' as const : 'decreasing' as const,
           supplyRisk: analysis.supplyRisk.riskLevel,
           recommendation: analysis.inventoryOptimization.reason,
-          supplierCount: Math.min(10, Math.max(1, Math.ceil(analysis.demandTrend.last90DaysDemand / 2000))),
+          supplierCount: analysis.supplierMatch?.supplierCount ?? Math.min(10, Math.max(1, Math.ceil(analysis.demandTrend.last90DaysDemand / 2000))),
           averageDeliveryCycle: 30 + (analysis.demandTrend.demandGrowthRate > 50 ? 10 : 0),
           supplyStabilityScore: Math.round(100 - analysis.supplyRisk.riskScore),
           currentInventoryLevel: analysis.inventoryStatus.currentStock,
@@ -104,64 +110,7 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
     loadAllData();
   }, []);
 
-  // 当用户切换产品时，加载详细信息
-  useEffect(() => {
-    if (!selectedProductId) return;
-
-    // 大脑模式不需要重新加载预测数据，因为所有产品的预测数据已经在第一个useEffect中加载了
-
-    // 加载产品详细信息
-    const loadProductDetails = async () => {
-      try {
-        const [productEntities, bomEvents, inventoryEvents] = await Promise.all([
-          loadProductEntities(),
-          loadBOMEvents(),
-          loadInventoryEvents()
-        ]);
-
-        const productEntity = productEntities.find(p => p.product_id === selectedProductId);
-        if (productEntity) {
-          const productBOMs = bomEvents.filter(bom =>
-            bom.parent_id === selectedProductId &&
-            bom.parent_type === 'Product' &&
-            bom.status === 'Active'
-          );
-          const materialCodes = productBOMs.map(bom => bom.child_code);
-
-          const productInventories = inventoryEvents
-            .filter(inv =>
-              inv.item_id === selectedProductId &&
-              inv.item_type === 'Product' &&
-              inv.status === 'Active'
-            )
-            .sort((a, b) => b.snapshot_month.localeCompare(a.snapshot_month));
-
-          const latestInventory = productInventories[0];
-          const stockQuantity = latestInventory ? parseInt(latestInventory.quantity) : 0;
-
-          const product: Product = {
-            productId: productEntity.product_id,
-            productName: productEntity.product_name,
-            materialCodes,
-            status: productEntity.status as any,
-            stockQuantity: stockQuantity,
-            stockUnit: productEntity.main_unit,
-          };
-          setSelectedProduct(product);
-        } else {
-          setSelectedProduct(null);
-        }
-      } catch (error) {
-        console.error('Failed to load product info:', error);
-        setSelectedProduct(null);
-      }
-    };
-    loadProductDetails();
-    loadProductDetails();
-  }, [selectedProductId]);
-
   const selectedAnalysis = analyses.find(a => a.productId === selectedProductId);
-  const selectedProductLifecycleAssessment = selectedProductId ? getProductLifecycleAssessment(selectedProductId) : null;
 
   return (
     <div className="space-y-6">
@@ -204,8 +153,7 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
             selectedProductId={selectedProductId}
             onProductSelect={setSelectedProductId}
             demandForecasts={demandForecasts}
-            product={selectedProduct}
-            productLifecycleAssessment={selectedProductLifecycleAssessment}
+            supplierDetailPanels={supplierDetailPanels}
           />
         )}
       </div>

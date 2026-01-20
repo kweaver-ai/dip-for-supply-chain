@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ProductSupplyAnalysis } from '../../types/ontology';
-import { Package, Truck, TrendingUp, AlertTriangle, Info } from 'lucide-react';
+import type { SupplierDetailPanelModel } from '../../services/productSupplyCalculator';
+import { Package, Truck, TrendingUp, AlertTriangle, Info, ChevronRight } from 'lucide-react';
 import { productsData } from '../../utils/entityConfigService';
 import { ProductOrderAnalysisCard } from './ProductOrderAnalysisCard';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
+import { SupplierDetailDrawer } from './SupplierDetailDrawer';
 
 interface Props {
   analysis: ProductSupplyAnalysis;
+  supplierDetailPanel?: SupplierDetailPanelModel;
 }
 
 /**
@@ -65,7 +68,8 @@ const getStockoutRiskExplanation = (riskLevel: string, stockDays?: number): stri
   }
 };
 
-export const ProductSupplyMetricsCards: React.FC<Props> = ({ analysis }) => {
+export const ProductSupplyMetricsCards: React.FC<Props> = ({ analysis, supplierDetailPanel }) => {
+  const [supplierDrawerOpen, setSupplierDrawerOpen] = useState(false);
   const riskColors = {
     low: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     medium: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -84,6 +88,11 @@ export const ProductSupplyMetricsCards: React.FC<Props> = ({ analysis }) => {
 
   return (
     <div className="space-y-4">
+      <SupplierDetailDrawer
+        open={supplierDrawerOpen}
+        onClose={() => setSupplierDrawerOpen(false)}
+        model={supplierDetailPanel}
+      />
       {/* First row: Order Analysis Card (wider) + 4 smaller cards */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
         {/* Order Analysis Card - spans 2 columns (FR-001.5) */}
@@ -98,18 +107,28 @@ export const ProductSupplyMetricsCards: React.FC<Props> = ({ analysis }) => {
         </div>
 
         {/* Supplier Count */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg p-3 border border-blue-100 hover:shadow-md transition-all">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 bg-blue-500/10 rounded flex items-center justify-center">
-              <Package className="text-blue-600" size={16} />
+        <button
+          type="button"
+          onClick={() => setSupplierDrawerOpen(true)}
+          className="text-left bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-lg p-3 border border-indigo-100 hover:shadow-md hover:border-indigo-200 transition-all group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-indigo-500/10 rounded flex items-center justify-center">
+                <Package className="text-indigo-600" size={16} />
+              </div>
+              <div className="text-xs text-slate-600">供应商数量</div>
             </div>
-            <div className="text-xs text-slate-600">供应商数量</div>
+            <ChevronRight className="text-indigo-400 group-hover:text-indigo-600 transition-colors" size={18} />
           </div>
           <div className="flex items-baseline gap-1">
             <div className="text-2xl font-bold text-slate-800">{analysis.supplierCount}</div>
             <div className="text-xs text-slate-500">家</div>
           </div>
-        </div>
+          <div className="mt-1 text-xs text-slate-500 group-hover:text-slate-600 transition-colors">
+            查看物料展开与供应商明细
+          </div>
+        </button>
 
         {/* Average Delivery Cycle */}
         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-lg p-3 border border-emerald-100 hover:shadow-md transition-all">
