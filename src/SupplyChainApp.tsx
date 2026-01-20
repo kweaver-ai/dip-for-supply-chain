@@ -32,11 +32,10 @@ import ConfigBackendLayout from './components/config-backend/ConfigBackendLayout
 import { populateEntityConfigs } from './utils/entityConfigService';
 import { initializeEntityData } from './utils/entityConfigService';
 
-
 // Navigation configuration
 const navigation = [
   { id: 'cockpit' as const, label: '驾驶舱', icon: LayoutDashboard },
-  { id: 'planning' as const, label: '供应链计划', icon: Calendar },
+  { id: 'planning' as const, label: 'PMC 决策中心', icon: Calendar },
   { id: 'inventory' as const, label: '库存优化', icon: Package },
   { id: 'optimization' as const, label: '产品供应优化', icon: TrendingUp },
   { id: 'delivery' as const, label: '订单交付', icon: Truck },

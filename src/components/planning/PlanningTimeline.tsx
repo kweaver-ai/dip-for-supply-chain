@@ -13,9 +13,9 @@ interface PlanningTimelineProps {
 }
 
 const PLANNING_STAGES: PlanningStageConfig[] = [
-  { id: 'DP', label: '需求计划DP', shortLabel: 'DP', order: 1 },
-  { id: 'MPS', label: '生产计划MPS', shortLabel: 'MPS', order: 2 },
-  { id: 'MRP', label: '采购计划MRP', shortLabel: 'MRP', order: 3 },
+  { id: 'DP', label: '需求共识与预测（DP）', shortLabel: 'DP', order: 1 },
+  { id: 'MPS', label: '生产承诺与齐套计划（MPS）', shortLabel: 'MPS', order: 2 },
+  { id: 'MRP', label: '物料执行与风险预警（MRP）', shortLabel: 'MRP', order: 3 },
 ];
 
 const PlanningTimeline = ({ activeStage, onStageChange }: PlanningTimelineProps) => {
