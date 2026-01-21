@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ProductSupplyAnalysisPanel } from './ProductSupplyAnalysisPanel';
 import type { ProductSupplyAnalysis, DemandForecast } from '../../types/ontology';
 import type { SupplierDetailPanelModel } from '../../services/productSupplyCalculator';
-import { Filter, Download, Layers, MessageSquare } from 'lucide-react';
+import { Layers, MessageSquare } from 'lucide-react';
 
 export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => void }> = ({ toggleCopilot }) => {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -125,16 +125,7 @@ export const ProductSupplyOptimizationPage: React.FC<{ toggleCopilot?: () => voi
           </h1>
           <p className="text-slate-500 mt-1">NPI 选型、EOL 决策与供应链风险评估</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-            <Filter size={16} />
-            筛选
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-            <Download size={16} />
-            导出
-          </button>
-        </div>
+
       </div>
 
       {/* Main Content */}

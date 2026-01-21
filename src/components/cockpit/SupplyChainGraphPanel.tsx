@@ -321,7 +321,7 @@ const SupplyChainGraphPanel = ({ onNavigate }: Props) => {
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="p-6 border-b border-slate-200">
-        <h2 className="text-lg font-semibold text-slate-800">供应链图谱</h2>
+        <h2 className="text-lg font-semibold text-slate-800">供应链对象类</h2>
       </div>
       <div className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">

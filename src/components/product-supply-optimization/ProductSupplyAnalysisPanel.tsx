@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ProductSupplyAnalysis, DemandForecast } from '../../types/ontology';
 import type { SupplierDetailPanelModel } from '../../services/productSupplyCalculator';
-import { Package, Sparkles, Search } from 'lucide-react';
+import { Package, Search } from 'lucide-react';
 import { ProductSupplyMetricsCards } from './ProductSupplyMetricsCards';
 import { ProductDemandForecastCard } from './ProductDemandForecastCard';
 import { ProductDemandForecastPanelNew } from './ProductDemandForecastPanelNew';
@@ -28,11 +28,7 @@ export const ProductSupplyAnalysisPanel: React.FC<Props> = ({
   supplierDetailPanels = new Map(),
 }) => {
 
-  // AI suggestions
-  const aiSuggestions = [
-    '建议优先关注库存量前3的产品，及时调整供应策略',
-    '根据需求预测，建议提前准备高需求产品的原材料',
-  ];
+
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
@@ -66,20 +62,7 @@ export const ProductSupplyAnalysisPanel: React.FC<Props> = ({
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow">
-      {/* AI Suggestions Section */}
-      {allProducts.length > 0 && (
-        <div className="mb-6 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl p-4">
-          <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-            <Sparkles size={20} className="text-indigo-600" />
-            AI 建议
-          </h3>
-          <ul className="text-sm text-slate-700 space-y-1">
-            {aiSuggestions.map((suggestion, i) => (
-              <li key={i}>• {suggestion}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+
 
       {/* Product Selection */}
       <ProductSelectionSection
