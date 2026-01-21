@@ -604,14 +604,15 @@ export function setKnowledgeNetworkId(id: string): void {
 export function getKnowledgeNetworkConfig(): KnowledgeNetworkConfig | null {
   const preset = knowledgeNetworkPresets.find(p => p.id === currentKnowledgeNetworkId);
 
-  const baseConfig = {
+  const baseConfig: KnowledgeNetworkConfig = {
     id: currentKnowledgeNetworkId,
     knowledgeNetworkId: currentKnowledgeNetworkId,
     type: ApiConfigType.KNOWLEDGE_NETWORK,
+    name: '自定义知识网络',
     enabled: true,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    objectTypes: {}, // Defaults to empty
+    objectTypes: {},
     tags: ['system-generated']
   };
 
@@ -624,11 +625,7 @@ export function getKnowledgeNetworkConfig(): KnowledgeNetworkConfig | null {
     };
   }
 
-  // 如果不在预设中，返回基本配置
-  return {
-    ...baseConfig,
-    name: '自定义知识网络',
-  };
+  return baseConfig;
 }
 
 /**
