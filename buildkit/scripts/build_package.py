@@ -223,10 +223,7 @@ def main() -> None:
                 "--override-arch",
                 args.arch,
                 f"docker-daemon:{image_tag}",
-                (
-                    f"oci-archive:{images_dir}/{name}-{tag}_{args.arch}.tar"
-                    f":{name}:{tag}"
-                ),
+                f"docker-archive:{images_dir}/{name}-{tag}_{args.arch}.tar",
             ]
         )
     else:
