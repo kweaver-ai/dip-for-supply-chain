@@ -6,25 +6,9 @@ server {
     # 隐藏版本号（安全建议）
     server_tokens off;
 
-    # 构建后的 dist 目录
-    root "/app/dist";
-
-    location / {
-        # 允许跨域（Qiankun 必须）
-        add_header Access-Control-Allow-Origin *;
-        add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
-        add_header Access-Control-Allow-Headers 'DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization';
-
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
-
+    # 微应用的访问路径配置
+    # 注意：location 后面的路径就是 entry 中的路径部分
     location /{{ name }} {
-        # 处理带有应用名称前缀的情况
-        add_header Access-Control-Allow-Origin *;
-        add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
-        add_header Access-Control-Allow-Headers 'DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization';
-
         # 静态文件缓存配置
         if ($request_filename ~* ^.*[.](html|htm)$) {
             expires 0;
@@ -35,11 +19,11 @@ server {
             add_header Cache-Control "public, max-age=2592000";
         }
 
-        # 映射 /{{ name }}/x 到 /app/dist/x
+        # 构建后的 dist 目录，在打包镜像时会放到 /app/dist 下
         alias "/app/dist";
         index index.html;
         
-        # 支持前端路由
+        # 支持前端路由（重要：必须配置）
         try_files $uri $uri/ /{{ name }}/index.html;
     }
 

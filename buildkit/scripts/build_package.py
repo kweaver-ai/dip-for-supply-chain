@@ -151,14 +151,7 @@ def main() -> None:
 
     task_dir = create_task_dir(base_dir / ".cache")
 
-    # Only build if dist doesn't exist or requested
-    dist_dir = project_root / "dist"
-    if not dist_dir.exists():
-        print(f"Building application in {project_root}...")
-        npm_cmd = "npm.cmd" if os.name == "nt" else "npm"
-        run_command([npm_cmd, "run", "build"], cwd=project_root)
-    else:
-        print("Using existing dist directory.")
+    run_command(["npm", "run", "build"], cwd=project_root)
 
     copy_dist(project_root / "dist", task_dir / "dist")
 
@@ -189,81 +182,60 @@ def main() -> None:
     charts_package_dir.mkdir(parents=True, exist_ok=True)
 
     image_tag = f"registry.aishu.cn:15000/{name}:{tag}"
-    
-    # Check for required tools
-    has_docker = shutil.which("docker") is not None
-    has_skopeo = shutil.which("skopeo") is not None
-    has_helm = shutil.which("helm") is not None
-    
-    if has_docker:
-        run_command(
-            [
-                "docker",
-                "buildx",
-                "build",
-                "--load",
-                "--platform",
-                f"linux/{args.arch}",
-                "-t",
-                image_tag,
-                ".",
-            ],
-            cwd=task_dir,
+    run_command(
+        [
+            "docker",
+            "buildx",
+            "build",
+            "--load",
+            "--platform",
+            f"linux/{args.arch}",
+            "-t",
+            image_tag,
+            ".",
+        ],
+        cwd=task_dir,
+    )
+    run_command(
+        [
+            "skopeo",
+            "copy",
+            "--override-os",
+            "linux",
+            "--override-arch",
+            args.arch,
+            f"docker-daemon:{image_tag}",
+            (
+                f"oci-archive:{images_dir}/{name}-{tag}_{args.arch}.tar"
+                f":{image_tag}"
+            ),
+        ]
+    )
+    run_command(["helm", "lint", str(charts_output)])
+    run_command(
+        [
+            "helm",
+            "package",
+            str(charts_output),
+            "--destination",
+            str(charts_package_dir),
+        ]
+    )
+    packaged_charts = list(charts_package_dir.glob("*.tgz"))
+    if not packaged_charts:
+        raise FileNotFoundError(
+            f"No chart package found in {charts_package_dir}"
         )
-    else:
-        print("WARNING: Docker not found. Skipping image build.")
-
-    if has_skopeo:
-        run_command(
-            [
-                "skopeo",
-                "copy",
-                "--override-os",
-                "linux",
-                "--override-arch",
-                args.arch,
-                f"docker-daemon:{image_tag}",
-                f"docker-archive:{images_dir}/{name}-{tag}_{args.arch}.tar",
-            ]
+    if len(packaged_charts) > 1:
+        raise RuntimeError(
+            f"Multiple chart packages found in {charts_package_dir}"
         )
-    else:
-        print("WARNING: Skopeo not found. Skipping image copy.")
+    target_chart = charts_package_dir / f"{name}-{tag}_{args.arch}.tgz"
+    if packaged_charts[0].resolve() != target_chart.resolve():
+        shutil.move(str(packaged_charts[0]), target_chart)
 
-    if has_helm:
-        run_command(["helm", "lint", str(charts_output)])
-        run_command(
-            [
-                "helm",
-                "package",
-                str(charts_output),
-                "--destination",
-                str(charts_package_dir),
-            ]
-        )
-        packaged_charts = list(charts_package_dir.glob("*.tgz"))
-        if not packaged_charts:
-            raise FileNotFoundError(
-                f"No chart package found in {charts_package_dir}"
-            )
-        if len(packaged_charts) > 1:
-            raise RuntimeError(
-                f"Multiple chart packages found in {charts_package_dir}"
-            )
-        target_chart = charts_package_dir / f"{name}-{tag}_{args.arch}.tgz"
-        if packaged_charts[0].resolve() != target_chart.resolve():
-            shutil.move(str(packaged_charts[0]), target_chart)
-    else:
-        print("WARNING: Helm not found. Skipping chart package.")
-
-    print(f"All components prepared. Zipping into DIP package...")
     dip_output = task_dir / "package" / f"{name}-{tag}_{args.arch}.dip"
     build_dip_package(task_dir / "package" / args.arch, dip_output)
-    
-    print(f"Successfully created DIP package at: {dip_output.absolute()}")
-    # Also copy to a more predictable location for CI
-    final_output = project_root / f"{name}-{tag}_{args.arch}.dip"
-    shutil.copy2(dip_output, final_output)
-    print(f"Copied package to root: {final_output.absolute()}")
 
 
 if __name__ == "__main__":
