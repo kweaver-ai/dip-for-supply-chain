@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { apiConfigService } from '../../../services/apiConfigService';
 import { ApiConfigType, type WorkflowConfig } from '../../../types/apiConfig';
+import { dipEnvironmentService } from '../../../services/dipEnvironmentService';
 
 /**
  * Get DAG ID from configuration service with fallback
@@ -61,7 +62,8 @@ const InventoryAIAnalysisPanel = () => {
                 const headers = await import('../../../config/apiConfig').then(m => m.getAuthHeaders());
 
                 // 2. Fetch latest successful execution
-                const listUrl = `/api/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=20`;
+                const automationBase = dipEnvironmentService.getAutomationApiBase();
+                const listUrl = `${automationBase}/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=20`;
                 console.log('[InventoryAIAnalysisPanel] Fetching DAG results from:', listUrl);
 
                 const listResponse = await fetch(listUrl, {
@@ -123,7 +125,7 @@ const InventoryAIAnalysisPanel = () => {
                     console.log('[InventoryAIAnalysisPanel] Using result ID:', resultId);
 
                     // 3. Fetch execution details
-                    const detailUrl = `/api/automation/v2/dag/${DAG_ID}/result/${resultId}`;
+                    const detailUrl = `${automationBase}/dag/${DAG_ID}/result/${resultId}`;
                     console.log('[InventoryAIAnalysisPanel] Fetching execution details from:', detailUrl);
 
                     const detailResponse = await fetch(detailUrl, {
@@ -271,8 +273,9 @@ const InventoryAIAnalysisPanel = () => {
 
                 console.log(`[InventoryAIAnalysisPanel] Checking status (attempt ${attempts}/${maxAttempts})...`);
 
+                const statusBase = dipEnvironmentService.getAutomationApiBase();
                 const statusResponse = await fetch(
-                    `/api/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=1`,
+                    `${statusBase}/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=1`,
                     { headers }
                 );
 

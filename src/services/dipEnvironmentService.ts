@@ -199,6 +199,29 @@ class DipEnvironmentService {
   hasLogout(): boolean {
     return this.logoutMethod !== null;
   }
+
+  // ============================================================================
+  // DIP-specific API Configuration
+  // ============================================================================
+
+  /** DIP-specific agent app key */
+  private readonly DIP_AGENT_APP_KEY = '01KFN4FM9P5MB9G693TESZRC5Z';
+
+  /**
+   * Get the agent app key for DIP mode.
+   * Returns DIP-specific key when in DIP mode, null otherwise.
+   */
+  getAgentAppKey(): string | null {
+    return this.isDipMode() ? this.DIP_AGENT_APP_KEY : null;
+  }
+
+  /**
+   * Get the automation API base path.
+   * DIP uses v1, standalone dev uses v2.
+   */
+  getAutomationApiBase(): string {
+    return this.isDipMode() ? '/api/automation/v1' : '/api/automation/v2';
+  }
 }
 
 // Export singleton instance

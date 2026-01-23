@@ -8,6 +8,7 @@ import type { CopilotSidebarProps } from '../components/shared/CopilotSidebar';
 import type { CopilotRichContent, StreamMessage } from '../types/ontology';
 import { agentApiClient } from '../services/agentApi';
 import { apiConfigService } from '../services/apiConfigService';
+import { dipEnvironmentService } from '../services/dipEnvironmentService';
 
 // Agent configuration mapping for different views
 // Maps view names to agent config IDs in the configuration center
@@ -77,8 +78,9 @@ export const getCopilotConfig = async (
 
   // Fallback to default if config not found
   const fallback = FALLBACK_AGENT_NAMES[currentView] || FALLBACK_AGENT_NAMES.cockpit;
+  const dipKey = dipEnvironmentService.getAgentAppKey();
   const finalConfig = agentConfig || {
-    agent_key: '01KEX8BP0GR6TMXQR7GE3XN16A', // Fallback agent key
+    agent_key: dipKey || '01KEX8BP0GR6TMXQR7GE3XN16A', // DIP-specific or dev fallback
     agent_version: 'v1',
     name: fallback.name,
     description: fallback.description

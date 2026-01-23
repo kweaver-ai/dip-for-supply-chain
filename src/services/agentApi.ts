@@ -7,6 +7,7 @@
 
 import type { StreamMessage, Conversation } from '../types/ontology';
 import { getServiceConfig, getAuthToken } from '../config/apiConfig';
+import { dipEnvironmentService } from './dipEnvironmentService';
 
 // Configuration constants
 const RETRY_DELAY = 1000; // 1 second base delay for exponential backoff
@@ -215,10 +216,11 @@ class AgentApiClient {
   }
 
   /**
-   * Get app key from config - fetches fresh value each time
+   * Get app key from config - uses DIP-specific key in DIP mode
    */
   private get appKey(): string {
-    return getServiceConfig('agent').appKey;
+    const dipKey = dipEnvironmentService.getAgentAppKey();
+    return dipKey || getServiceConfig('agent').appKey;
   }
 
   /**

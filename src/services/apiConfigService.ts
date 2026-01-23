@@ -23,6 +23,7 @@ import { ontologyApi } from '../api/ontologyApi';
 import { dataViewApi } from '../api/dataViewApi';
 import { metricModelApi } from '../api/metricModelApi';
 import { getKnowledgeNetworkId, setKnowledgeNetworkId, getAuthHeaders } from '../config/apiConfig';
+import { dipEnvironmentService } from './dipEnvironmentService';
 
 // ============================================================================
 // API Configuration Service
@@ -455,7 +456,8 @@ class ApiConfigService {
         config: WorkflowConfig,
         timestamp: number
     ): Promise<ConfigTestResult> {
-        const url = `/api/automation/v2/dag/${config.dagId}/results?limit=1`;
+        const automationBase = dipEnvironmentService.getAutomationApiBase();
+        const url = `${automationBase}/dag/${config.dagId}/results?limit=1`;
 
         const response = await fetch(url, {
             method: 'GET',

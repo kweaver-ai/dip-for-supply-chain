@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { apiConfigService } from '../../services/apiConfigService';
 import { ApiConfigType, type WorkflowConfig } from '../../types/apiConfig';
+import { dipEnvironmentService } from '../../services/dipEnvironmentService';
 
 // AI Analysis Panel - 显示来自自动化工作流的AI分析报告
 
@@ -61,7 +62,8 @@ const AIAnalysisPanel = () => {
 
                 // 2. Fetch latest successful execution
                 const DAG_ID = getWorkflowDagId();
-                const listUrl = `/api/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=20`;
+                const automationBase = dipEnvironmentService.getAutomationApiBase();
+                const listUrl = `${automationBase}/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=20`;
                 console.log('[AIAnalysisPanel] Fetching DAG results from:', listUrl);
 
                 const listResponse = await fetch(listUrl, {
@@ -123,7 +125,7 @@ const AIAnalysisPanel = () => {
                     console.log('[AIAnalysisPanel] Using result ID:', resultId);
 
                     // 3. Fetch execution details
-                    const detailUrl = `/api/automation/v2/dag/${DAG_ID}/result/${resultId}`;
+                    const detailUrl = `${automationBase}/dag/${DAG_ID}/result/${resultId}`;
                     console.log('[AIAnalysisPanel] Fetching execution details from:', detailUrl);
 
                     const detailResponse = await fetch(detailUrl, {
@@ -273,8 +275,9 @@ const AIAnalysisPanel = () => {
 
                 console.log(`[AIAnalysisPanel] Checking status (attempt ${attempts}/${maxAttempts})...`);
 
+                const statusBase = dipEnvironmentService.getAutomationApiBase();
                 const statusResponse = await fetch(
-                    `/api/automation/v2/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=1`,
+                    `${statusBase}/dag/${DAG_ID}/results?sortBy=started_at&order=desc&limit=1`,
                     { headers }
                 );
 
