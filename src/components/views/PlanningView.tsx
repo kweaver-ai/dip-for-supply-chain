@@ -23,8 +23,8 @@ const PlanningView = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-800">
-          PMC 决策中心
-          <span className="text-base font-normal text-slate-500 ml-2">（Intelligent Production & Material Control）</span>
+          动态计划协同
+          <span className="text-base font-normal text-slate-500 ml-2">（Dynamic planning collaboration）</span>
         </h1>
       </div>
 

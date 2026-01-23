@@ -36,7 +36,7 @@ import { initializeEntityData } from './utils/entityConfigService';
 // Navigation configuration
 const navigation = [
   { id: 'cockpit' as const, label: '驾驶舱', icon: LayoutDashboard },
-  { id: 'planning' as const, label: 'PMC 决策中心', icon: Calendar },
+  { id: 'planning' as const, label: '动态计划协同', icon: Calendar },
   { id: 'inventory' as const, label: '库存优化', icon: Package },
   { id: 'optimization' as const, label: '产品供应优化', icon: TrendingUp },
   { id: 'delivery' as const, label: '订单交付', icon: Truck },
@@ -188,15 +188,15 @@ const SupplyChainAppContent = () => {
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto">
-          <div className="max-w-6xl mx-auto px-6 py-8">
-            {currentView === 'cockpit' && <CockpitView onNavigate={handleNavigate} toggleCopilot={() => setCopilotOpen(true)} />}
-            {currentView === 'search' && <SearchView toggleCopilot={() => setCopilotOpen(true)} />}
-            {currentView === 'planning' && <PlanningView />}
-            {currentView === 'inventory' && <InventoryView toggleCopilot={() => setCopilotOpen(true)} />}
-            {currentView === 'optimization' && <ProductSupplyOptimizationPage toggleCopilot={() => setCopilotOpen(true)} />}
-            {currentView === 'delivery' && <DeliveryViewEnhanced toggleCopilot={() => setCopilotOpen(true)} />}
-            {currentView === 'evaluation' && <SupplierEvaluationPage toggleCopilot={() => setCopilotOpen(true)} />}
-          </div>
+            <div className="max-w-6xl mx-auto px-6 py-8">
+              {currentView === 'cockpit' && <CockpitView onNavigate={handleNavigate} toggleCopilot={() => setCopilotOpen(true)} />}
+              {currentView === 'search' && <SearchView toggleCopilot={() => setCopilotOpen(true)} />}
+              {currentView === 'planning' && <PlanningView />}
+              {currentView === 'inventory' && <InventoryView toggleCopilot={() => setCopilotOpen(true)} />}
+              {currentView === 'optimization' && <ProductSupplyOptimizationPage toggleCopilot={() => setCopilotOpen(true)} />}
+              {currentView === 'delivery' && <DeliveryViewEnhanced toggleCopilot={() => setCopilotOpen(true)} />}
+              {currentView === 'evaluation' && <SupplierEvaluationPage toggleCopilot={() => setCopilotOpen(true)} />}
+            </div>
           </div>
         )}
       </div>
