@@ -7,7 +7,7 @@
 - `src/`: Frontend Source Code (React + Vite)
 - `backend/`: Forecast Services (Python + Prophet)
 - `buildkit/`: DIP Application Packaging Tool
-- `scripts/`: Helper Scripts
+- `buildkit/`: DIP Application Packaging Tool
 - `sample_data/`: Sample Data (JSON formatted)
 
 ## Data Models & Samples

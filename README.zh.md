@@ -1,4 +1,4 @@
-# SupplyChainBrain - 供应链大脑AI应用
+# DIP for Supply Chain - 供应链大脑AI应用
 
 [中文](README.zh.md) | [English](README.md)
 
@@ -27,36 +27,7 @@
 
 ### 前端应用启动
 
-#### ⚠️ 重要：必须先启动代理服务器
-
-前端通过代理服务器转发API请求，**必须先启动代理服务器**才能正常连接API。
-
-#### 方法1：使用一键启动脚本（推荐）
-
-```bash
-# Windows
-start-all.bat
-
-# 这会自动：
-# 1. 检查并启动代理服务器（如果未运行）
-# 2. 启动前端开发服务器
-```
-
-#### 方法2：手动启动
-
-**步骤1：启动代理服务器**
-
-打开第一个终端窗口：
-
-```bash
-node proxy-server.js
-```
-
-代理服务器将在 `http://127.0.0.1:30777` 上运行。
-
-**步骤2：启动前端开发服务器**
-
-打开第二个终端窗口：
+#### 启动步骤
 
 ```bash
 npm install  # 如果还没安装依赖
@@ -162,7 +133,6 @@ SupplyChainBrain/
 │   │   └── prophet_service.py # Prophet 预测服务
 │   ├── requirements.txt      # Python 依赖
 │   └── run.py               # 启动脚本
-├── docs/                     # 文档
 └── public/                   # 静态资源
 ```
 
@@ -447,9 +417,7 @@ gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker
 ## 常见问题
 
 **Q: API请求失败，提示连接错误**
-- ✅ 检查代理服务器是否运行（应该能看到代理服务器的日志输出）
-- ✅ 检查端口30777是否被占用
-- ✅ 确认代理服务器窗口没有报错
+
 
 **Q: 返回401 Unauthorized**
 - ✅ 检查token是否正确配置在 `src/config/apiConfig.ts`
@@ -457,7 +425,7 @@ gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 **Q: 返回404 Not Found**
 - ✅ 检查API baseUrl配置是否正确
-- ✅ 确认代理服务器正在运行
+
 
 **Q: Prophet 预测不可用**
 - ✅ 确认后端算法服务已启动（`http://localhost:8000`）
@@ -466,8 +434,6 @@ gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 ## 相关文档
 
-- [产品供应优化设计文档](docs/product-supply-optimization-design.md)
-- [产品供应优化实现文档](docs/product-supply-optimization-implementation.md)
 - [Prophet 算法服务 README](backend/README.md)
 - [API 配置指南](src/config/README.md)
 
