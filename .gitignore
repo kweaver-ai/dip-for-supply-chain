@@ -20,6 +20,7 @@ coverage/
 !version.en.json
 
 # Documentation
+specs/
 docs/
 
 # Logs
