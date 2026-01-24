@@ -4,25 +4,25 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-**DIP for Supply Chain** 是基于供应链知识网络和本体建模方法的人工智能辅助分析决策系统。应用基于 React + TypeScript + Vite 构建，其底层的供应链知识网络（Ontology）运行在 **KWeaver AI Data Platform (ADP)** 之上，智能体（Agent）运行在 **KWeaver Decision Agent** 之上。在运行本应用前，请确保您已经部署了 [KWeaver](https://github.com/kweaver-ai/kweaver/) 的相关模块。
+**DIP for Supply Chain** 是基于DIP的供应链决策智能系统。应用基于 React + TypeScript + Vite 构建，其核心的供应链知识网络运行在 **KWeaver AI Data Platform (ADP)** 之上，智能体（Agent）运行在 **KWeaver Decision Agent** 之上。在运行本应用前，请确保您已经部署了 [KWeaver](https://github.com/kweaver-ai/kweaver/) 的相关模块。
 
-## 📚 快速链接
+## 快速链接
 
-- 🚀 [快速开始](#快速开始)
-- 📖 [系统架构](#系统架构)
-- 🎯 [功能模块](#功能模块)
-- 🔧 [开发指南](#开发指南)
-- 📄 [许可证](LICENSE) - Apache 2.0 许可证
-- 🐛 [报告问题](https://github.com/kweaver-ai/dip-for-supply-chain/issues) - 报告错误或问题
-- 💡 [功能建议](https://github.com/kweaver-ai/dip-for-supply-chain/issues) - 建议新功能
+- [快速开始](#快速开始)
+- [系统架构](#系统架构)
+- [功能模块](#功能模块)
+- [开发指南](#开发指南)
+- [许可证](LICENSE) - Apache 2.0 许可证
+- [报告问题](https://github.com/kweaver-ai/dip-for-supply-chain/issues) - 报告错误或问题
+- [功能建议](https://github.com/kweaver-ai/dip-for-supply-chain/issues) - 建议新功能
 
 ## 快速开始
 
 ### 前置要求
 
-- Node.js 16+
+- Node.js 18+
 - npm 或 yarn
-- Python 3.11+（可选，用于 Prophet 预测算法）
+- Python 3.10+（可选，用于 Prophet 预测算法）
 - DIP 平台运行中（参考 [KWeaver](https://github.com/kweaver-ai/kweaver/)）
 
 ### 前端应用启动
@@ -72,14 +72,28 @@ curl http://localhost:8000/health
 
 1. 打开浏览器访问 `http://127.0.0.1:5173`
 2. 打开浏览器控制台（F12）
-3. 在控制台运行以下代码进行连接诊断：
+3. 检查是否有任何连接错误或警告
 
-```javascript
-// 导入诊断工具
-import { runAllTests, printTestResults } from './src/utils/apiConnectionTest';
+## 目录结构
 
-// 运行测试
-const results = await runAllTests();
+- `src/`: 前端源代码（React + TypeScript）
+- `backend/`: 预测服务（Python + Prophet）
+- `buildkit/`: DIP 应用打包工具
+- `sample_data/`: 样例数据（SQL 格式，用于本体）
+- `public/`: 静态资源
+
+## 样例数据
+
+本项目提供了遵循本体定义的样例数据，位于 `sample_data/` 目录下，可用于开发测试及数据导入演示：
+
+- **产品 BOM 信息** (`产品bom信息_*.sql`): 产品物料清单结构
+- **产品信息** (`产品信息_*.sql`): 产品主数据
+- **供应商信息** (`供应商信息_*.sql`): 供应商档案（含风险评级）
+- **物料信息** (`物料信息_*.sql`): 物料库存数据
+- **库存信息** (`库存信息_*.sql`): 库存水平数据
+- **订单信息** (`订单信息_*.sql`): 订单记录
+- **生产计划信息** (`生产计划信息_*.sql`): 生产计划
+- **需求计划清单** (`需求计划清单_*.sql`): 需求预测数据
 
 ## 系统架构
 
@@ -110,22 +124,31 @@ const results = await runAllTests();
 
 ### 代码结构
 
-
 ```
-SupplyChainBrain/
+dip-for-supply-chain/
 ├── src/                        # 前端源代码
 │   ├── components/            # React 组件
 │   │   ├── product-supply-optimization/  # 产品供应优化模块
 │   │   ├── inventory/         # 库存管理模块
 │   │   ├── cockpit/          # 驾驶舱模块
-│   │   └── ...
-│   ├── services/             # API 服务层
+│   │   ├── planning/         # 动态计划协同模块
+│   │   ├── mps/              # 主生产计划组件
+│   │   ├── supplier-evaluation/ # 供应商评估视图
+│   │   ├── agents/           # AI 智能体集成组件
+│   │   ├── config-backend/   # 配置后端接口
+│   │   └── shared/           # 可复用共享组件
+│   ├── services/             # 业务逻辑层
 │   │   ├── demandPlanningService.ts       # 需求计划服务
 │   │   ├── forecastAlgorithmService.ts    # 前端预测算法
-│   │   └── forecastOperatorService.ts     # 预测算子服务（API集成）
-│   ├── api/                  # HTTP 客户端
+│   │   ├── forecastOperatorService.ts     # 预测算子服务（API集成）
+│   │   ├── bomInventoryService.ts         # BOM 和库存管理
+│   │   ├── ontologyApi.ts                 # 本体/知识网络查询
+│   │   └── agentApi.ts                    # Agent API 客户端
+│   ├── api/                  # HTTP 客户端层
 │   ├── config/               # 配置文件
-│   └── types/                # TypeScript 类型定义
+│   ├── types/                # TypeScript 类型定义
+│   ├── hooks/                # React 自定义 Hooks
+│   └── utils/                # 工具函数
 ├── backend/                   # 后端算法服务（Python）
 │   ├── app/
 │   │   ├── main.py           # FastAPI 应用
@@ -133,18 +156,24 @@ SupplyChainBrain/
 │   │   └── prophet_service.py # Prophet 预测服务
 │   ├── requirements.txt      # Python 依赖
 │   └── run.py               # 启动脚本
+├── buildkit/                 # DIP 应用打包工具套件
+│   ├── scripts/              # 构建自动化脚本
+│   ├── templates/            # Jinja2 模板（manifest、Dockerfile、nginx）
+│   ├── resources/            # 注入资源（qiankun 微应用）
+│   └── config.yaml           # 构建配置
+├── sample_data/              # SQL 样例数据文件
 └── public/                   # 静态资源
 ```
 
 ## 功能模块
 
-### 🏠 驾驶舱
+### 驾驶舱
 供应链整体概览，包括：
 - 关键指标监控
 - 实时预警
 - AI 分析助手
 
-### 📈 产品供应优化
+### 产品供应优化
 智能需求预测和供应优化，包括：
 - **需求预测**：支持多种预测算法
   - 简单指数平滑（Simple Exponential Smoothing）
@@ -155,32 +184,32 @@ SupplyChainBrain/
 - **产品齐套分析**：甘特图展示产品完整生产模式
 - **AI 优化建议**：基于预测结果的智能优化建议
 
-### 📅 动态计划协同
+### 动态计划协同
 基于有限产能的智能排程与协同管理：
 - **可视化排程**：生产计划甘特图，直观展示订单、工单与产能占用的时序关系。
 - **智能调度算法**：基于交期优先、产能均衡等多目标的自动排程计算。
 - **多级计划联动**：实现销售计划、主生产计划与物料需求计划的实时数据协同。
 
-### 📦 库存优化
+### 库存优化
 库存管理和优化分析：
 - 库存水平监控
 - 安全库存计算
 - AI 库存优化助手
 - **呆滞库存逆向计算器**：基于现有呆滞料逆向推算可生产成品组合，提供最大化消纳与最小化余料两种优化策略，通过"变呆为宝"盘活积压资产。
 
-### 🚚 订单交付
+### 订单交付
 交付管理：
 - 订单状态跟踪
 - 交付时效分析
 - AI 交付优化助手
 
-### 👥 供应商评估
+### 供应商评估
 供应商风险评估：
 - 多维度评估体系
 - 风险预警
 - AI 供应商分析助手
 
-### ⚙️ 管理配置
+### 管理配置
 系统配置管理：
 - 数据模式切换
 - 知识网络配置
@@ -269,28 +298,6 @@ SupplyChainBrain/
 3. 显示用户提示："Prophet 预测服务暂时不可用，已自动切换到 Holt-Winters 算法"
 4. 保证预测功能持续可用
 
-## 数据模式说明
-
-系统支持两种数据处理模式，可通过右上角的切换开关（或管理配置页面）进行切换：
-
-### 1. 通用模式 (`huida-legacy`)
-- **用途**: 展示完整的、经过验证的业务场景数据
-- **数据源**: `src/data/mockData.ts` 结合基础 API 服务
-- **场景**: 演示、开发和稳定性测试
-
-### 2. 惠达供应链大脑模式 (`huida-new`)
-- **用途**: 对接最新、真实的惠达供应链 API 数据
-- **数据源**: 真实的指标查询 API (`/proxy-metric/v1`)
-- **场景**: 实际业务分析、指标下钻和实时预警
-
-## 样例数据
-
-本项目提供了遵循本体定义的样例数据，位于 `sample_data/` 目录下，可用于开发测试及数据导入演示：
-
-*   **[suppliers.json](sample_data/suppliers.json)**: 典型供应商档案（含风险评级、交付表现等）。
-*   **[products.json](sample_data/products.json)**: 核心产品数据（含BOM结构、库存状态）。
-*   **[materials.json](sample_data/materials.json)**: 关键原材料库存数据（含状态分布）。
-*   **[orders.json](sample_data/orders.json)**: 跨越生产与交付周期的订单数据。
 
 ## Agent API 集成
 
@@ -314,70 +321,139 @@ SupplyChainBrain/
 - 会话管理: `GET|POST|PUT|DELETE /api/agent-app/v1/app/{app_key}/conversations`
 - 调试接口: `POST /api/agent-app/v1/app/{app_key}/api/debug`
 
-## 供应链知识网络配置
+## 开发模式
 
-系统集成了 **供应链知识网络** 配置功能，支持根据不同场景切换本体模型：
-- **动态 ID 绑定**: 可在管理页面实时选择当前激活的 `knowledgeNetworkId`
-- **模式联动**: 切换数据模式时，系统会自动推荐最适合该模式的知识网络
-- **本体路由**: 所有的本体查询均通过 `ontologyApi` 动态构建路由，支持跨网络、跨环境调用
+在开发模式下，前端直接连接到 ADP 环境。
+
+### 1. 前置要求
+
+- Node.js (v18+)
+- Python (v3.10+)
+- uv (Python 包管理器)
+
+### 2. 环境配置
+
+复制 `.env.example` 到 `.env.local` 并配置您的 ADP Token：
+
+```bash
+cp .env.example .env.local
+```
+
+在 `.env.local` 中设置以下内容：
+```ini
+VITE_AGENT_API_TOKEN=your_actual_token_here
+VITE_AGENT_API_BASE_URL=your_adp_url
+VITE_AGENT_APP_KEY=your_app_key
+```
+
+### 3. 启动应用
+
+安装依赖并启动前端开发服务器：
+
+```bash
+npm install
+npm run dev
+```
+
+启动后端预测服务（可选）：
+
+```bash
+cd backend
+# 创建并激活虚拟环境
+python -m venv venv
+# Windows
+.\venv\Scripts\activate
+# Linux/Mac
+source venv/bin/activate
+
+pip install -r requirements.txt
+python run.py
+```
+
+### 4. 验证连接
+
+1. 打开浏览器访问 `http://127.0.0.1:5173`
+2. 打开浏览器控制台（F12）
+3. 检查是否有任何连接错误或警告
+
+## 用户模式
+
+在用户模式下，应用被打包为 `.dip` 文件，并通过 DIP 应用商店安装。
+
+### 1. 打包应用
+
+本项目使用 `buildkit` 进行打包。buildkit 将 Web 应用转换为 qiankun 微应用并打包为 `.dip` 文件。
+
+```bash
+cd buildkit
+uv venv
+# Windows
+.\.venv\Scripts\activate
+# Linux/Mac
+source .venv/bin/activate
+
+# 构建 AMD64 包
+uv run scripts/build_package.py --arch=amd64
+
+# 构建 ARM64 包
+uv run scripts/build_package.py --arch=arm64
+```
+
+### 2. 获取包
+
+打包完成后，在 `buildkit/.cache/<timestamp>/package/` 目录中找到生成的 `.dip` 文件。
+
+`.dip` 包包含：
+- `application.key` - 应用标识符
+- `manifest.yaml` - 应用清单
+- `assets/` - 应用资源和图标
+- `packages/` - Docker 镜像和 Helm charts
+- `ontologies/` - 本体定义（如适用）
+- `agents/` - Agent 配置（如适用）
+
+### 3. 安装
+
+1. 登录到 DIP 平台。
+2. 进入应用商店。
+3. 上传并安装生成的 `.dip` 文件。
+4. 根据您的环境配置应用。
 
 ## 技术栈
 
 ### 前端
 - React 19.2.0
-- TypeScript
-- Vite
-- Tailwind CSS v4
+- TypeScript 5.9.3
+- Vite 7.2.4
+- Tailwind CSS 4.1.17
 - Lucide React (图标)
-- Recharts (图表)
-- Agent API 客户端 (自定义)
+- Recharts 3.5.0 (图表)
+- TanStack React Query 5.90.19 (状态管理)
+- qiankun (微应用框架，通过 vite-plugin-qiankun 1.0.15)
+- reactflow 11.11.4 (流程可视化)
 
 ### 后端算法服务
-- Python 3.11+
+- Python 3.10+
 - FastAPI 0.109.0
-- Prophet 1.1.5 (Meta 时间序列预测库)
+- Prophet 1.2.1 (Meta 时间序列预测库)
 - Pandas 2.1.4
 - NumPy 1.26.3
 - Uvicorn (ASGI 服务器)
+
+### 构建与质量
+- ESLint 9.39.1 with TypeScript 和 React 插件
+- TypeScript ESLint 8.46.4
 
 ## 开发指南
 
 ### 环境要求
 
 **前端**:
-- Node.js 16+
+- Node.js 18+
 - npm 或 yarn
 
 **后端算法服务** (可选):
-- Python 3.11+
-- pip
-
-### 项目结构
-
-```
-src/
-├── components/          # React 组件
-│   ├── product-supply-optimization/
-│   │   ├── ProductDemandForecastPanelNew.tsx  # 需求预测主面板
-│   │   ├── AlgorithmParameterPanel.tsx        # 算法参数配置
-│   │   └── ProductSupplyOptimizationPage.tsx  # 页面入口
-├── services/
-│   ├── forecastAlgorithmService.ts   # 前端预测算法实现
-│   ├── forecastOperatorService.ts    # 预测算子服务（API集成）
-│   └── demandPlanningService.ts      # 需求计划服务
-├── api/
-│   └── httpClient.ts                 # HTTP 客户端
-└── config/
-    └── apiConfig.ts                  # API 配置
-
-backend/
-├── app/
-│   ├── main.py              # FastAPI 应用入口
-│   ├── models.py            # Pydantic 数据模型
-│   └── prophet_service.py   # Prophet 预测核心逻辑
-├── requirements.txt         # Python 依赖
-└── run.py                  # 启动脚本
-```
+- Python 3.10+
+- pip 或 uv
 
 ### 添加新的预测算法
 
@@ -416,26 +492,25 @@ gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 ## 常见问题
 
-**Q: API请求失败，提示连接错误**
+**Q: API 请求失败，提示连接错误**
+- 检查 DIP 平台是否正在运行
+- 验证 `.env.local` 中的 API 配置
+- 确保网络能够连接到平台
 
+**Q: 返回 401 Unauthorized**
+- 检查 `.env.local` 中的 token 是否正确配置
+- 确认 token 未过期
+- 验证 app_key 是否正确
 
-**Q: 返回401 Unauthorized**
-- ✅ 检查token是否正确配置在 `src/config/apiConfig.ts`
-- ✅ 确认token未过期
-
-**Q: 返回404 Not Found**
-- ✅ 检查API baseUrl配置是否正确
+**Q: 返回 404 Not Found**
+- 检查 API baseUrl 配置是否正确
+- 验证端点路径是否正确
 
 
 **Q: Prophet 预测不可用**
-- ✅ 确认后端算法服务已启动（`http://localhost:8000`）
-- ✅ 系统会自动使用 Holt-Winters 作为降级方案，不影响基本功能
-- ✅ 查看前端控制台，会显示降级提示信息
-
-## 相关文档
-
-- [Prophet 算法服务 README](backend/README.md)
-- [API 配置指南](src/config/README.md)
+- 确认后端算法服务已启动（`http://localhost:8000`）
+- 系统会自动使用 Holt-Winters 作为降级方案，不影响基本功能
+- 查看前端控制台，会显示降级提示信息
 
 ## 贡献指南
 
@@ -453,9 +528,9 @@ gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker
 
 ## 支持与联系
 
-- **问题反馈**: [GitHub Issues](https://github.com/your-org/supply-chain-brain/issues)
+- **问题反馈**: [GitHub Issues](https://github.com/kweaver-ai/dip-for-supply-chain/issues)
 - **许可证**: [Apache 2.0 许可证](LICENSE)
 
 ---
 
-基于 [DIP 平台](https://github.com/kweaver-ai/kweaver/) 构建 - 一个用于构建决策智能AI应用的开源生态系统。
+基于 [KWeaver 平台](https://github.com/kweaver-ai/kweaver/) 构建 - 一个用于构建决策智能 AI 应用的开源生态系统。
