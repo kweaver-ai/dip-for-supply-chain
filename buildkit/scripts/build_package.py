@@ -173,8 +173,15 @@ def main() -> None:
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(manifest_rendered, encoding="utf-8")
 
-    application_key_path = task_dir / "package" / args.arch / "application.key"
     application_key_path.write_text(str(app_key), encoding="utf-8")
+
+    # Copy logo
+    logo_source = project_root / "public" / "logo-32x32.png"
+    if logo_source.exists():
+        logo_dest = task_dir / "package" / args.arch / "logo.png"
+        shutil.copy2(logo_source, logo_dest)
+    else:
+        print(f"Warning: Logo file not found at {logo_source}")
 
     dockerfile_rendered = render_template(
         base_dir / "templates/Dockerfile.j2", context
