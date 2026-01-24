@@ -47,43 +47,36 @@ export interface ProductionStats {
     statusDistribution: { status: string; count: number; percentage: number }[];
 }
 
-import { httpClient } from '../api/httpClient';
 import { ontologyApi } from '../api/ontologyApi';
 import type { QueryCondition } from '../api/ontologyApi';
+
+// 生产计划对象类型 ID
+const PRODUCTION_PLAN_OBJECT_TYPE_ID = 'd5704qm9olk4bpa66vp0';
 
 // 销售订单对象类型 ID
 const SALES_ORDER_OBJECT_TYPE_ID = 'd56vh169olk4bpa66v80';
 
 /**
- * 加载生产计划数据 (仅API)
+ * 加载生产计划数据 (通过 Ontology API)
  */
 export async function loadProductionPlanData(): Promise<ProductionPlan[]> {
     try {
-        console.log('[ProductionPlanCalculator] 尝试从API加载数据 (Direct HttpClient)...');
+        console.log('[ProductionPlanCalculator] 通过 Ontology API 加载生产计划数据...');
 
-        // 使用用户指定的完整 API 路径 (通过 Proxy 转发)
-        // 目标: https://dip.aishu.cn/api/mdl-uniquery/v1/data-views/2004376134633480194?include_view=true
-        const viewId = '2004376134633480194';
-        const url = `/api/mdl-uniquery/v1/data-views/${viewId}?include_view=true`;
-
-        const requestBody = {
+        const response = await ontologyApi.queryObjectInstances(PRODUCTION_PLAN_OBJECT_TYPE_ID, {
             limit: 1000,
-            offset: 0
-        };
+        });
 
-        const response = await httpClient.postAsGet<any>(url, requestBody);
+        const entries = response.entries || [];
 
-        // 兼容不同的响应结构
-        const rawData = response.data?.entries || response.data || [];
+        if (entries.length > 0) {
+            console.log(`[ProductionPlanCalculator] Ontology API 返回 ${entries.length} 条生产计划记录`);
+            console.log('[ProductionPlanCalculator] 第一条数据示例:', entries[0]);
 
-        if (Array.isArray(rawData) && rawData.length > 0) {
-            console.log(`[ProductionPlanCalculator] API返回 ${rawData.length} 条记录`);
-            console.log('[ProductionPlanCalculator] 第一条数据示例:', rawData[0]);
-
-            return rawData.map((item: any) => ({
+            return entries.map((item: any) => ({
                 order_number: item.order_number || item.orderNumber || item.id || '',
                 code: item.product_code || item.productCode || item.code || '',
-                name: item.product_name || item.productName || item.name || '',  // 提取产品名称
+                name: item.product_name || item.productName || item.name || '',
                 quantity: parseFloat(item.quantity) || 0,
                 ordered: parseFloat(item.ordered) || 0,
                 start_time: item.start_time || item.startTime || item.startDate || '',
@@ -93,16 +86,11 @@ export async function loadProductionPlanData(): Promise<ProductionPlan[]> {
             }));
         }
 
-        if (!Array.isArray(rawData)) {
-            console.warn('[ProductionPlanCalculator] API响应数据格式不正确:', response.data);
-        } else {
-            console.warn('[ProductionPlanCalculator] API返回空数据');
-        }
-
+        console.warn('[ProductionPlanCalculator] Ontology API 返回空数据');
         return [];
 
     } catch (error) {
-        console.error('[ProductionPlanCalculator] API加载失败:', error);
+        console.error('[ProductionPlanCalculator] Ontology API 加载失败:', error);
         return [];
     }
 }
