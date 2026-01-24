@@ -253,6 +253,12 @@ def main() -> None:
     dip_output = task_dir / "package" / f"{name}-{tag}_{args.arch}.dip"
     build_dip_package(task_dir / "package" / args.arch, dip_output)
 
+    # Copy to stable release directory for CI
+    release_dir = base_dir / "release"
+    release_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(dip_output, release_dir / dip_output.name)
+    print(f"Build successful! Package available at: {release_dir / dip_output.name}")
+
 
 if __name__ == "__main__":
     main()
