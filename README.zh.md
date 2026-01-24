@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-**DIP for Supply Chain** 是基于供应链知识网络和本体建模方法的人工智能辅助分析决策系统。应用基于 React + TypeScript + Vite 构建，其底层的供应链知识网络（Ontology）和智能体（Agent）均运行在 DIP 平台（[KWeaver](https://github.com/kweaver-ai/kweaver/)）之上。在运行本应用前，请确保您已经部署了 DIP 平台。
+**DIP for Supply Chain** 是基于供应链知识网络和本体建模方法的人工智能辅助分析决策系统。应用基于 React + TypeScript + Vite 构建，其底层的供应链知识网络（Ontology）运行在 **KWeaver AI Data Platform (ADP)** 之上，智能体（Agent）运行在 **KWeaver Decision Agent** 之上。在运行本应用前，请确保您已经部署了 [KWeaver](https://github.com/kweaver-ai/kweaver/) 的相关模块。
 
 ## 📚 快速链接
 

@@ -1,13 +1,13 @@
 # DIP for Supply Chain
 
-**DIP for Supply Chain** is a Supply Chain Management Intelligent Application based on DIP (Decision Intelligence Platform).
+**DIP for Supply Chain** is an intelligent decision support system based on Supply Chain Knowledge Network and Ontology modeling. The application is built with React + TypeScript + Vite. Its underlying Supply Chain Knowledge Network (Ontology) runs on **KWeaver AI Data Platform (ADP)**, and its Agents run on **KWeaver Decision Agent**. Before running this application, please ensure you have deployed the relevant [KWeaver](https://github.com/kweaver-ai/kweaver/) modules.
 
 ## Directory Structure
 
 - `src/`: Frontend Source Code (React + Vite)
 - `backend/`: Forecast Services (Python + Prophet)
 - `buildkit/`: DIP Application Packaging Tool
-- `buildkit/`: DIP Application Packaging Tool
+
 - `sample_data/`: Sample Data (JSON formatted)
 
 ## Data Models & Samples
