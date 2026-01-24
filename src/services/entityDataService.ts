@@ -344,7 +344,7 @@ export const fetchEntitiesByType = async (type: EntityType): Promise<any[]> => {
     console.log(`[EntityDataService] ${type} - Total records retrieved: ${entries.length}`);
 
     // Brain Mode: Return raw data as requested by user
-    if (getCurrentEnvironment() === 'huida-new') {
+    if (getCurrentEnvironment() === 'dip-cloud') {
       return entries;
     }
 

@@ -218,8 +218,8 @@ class DataViewApiClient {
    * Query customers
    */
   async getCustomers(options?: DataViewQueryOptions) {
-    // Special handling for Brain Mode (huida-new)
-    if (getCurrentEnvironment() === 'huida-new') {
+    // Special handling for Brain Mode (dip-cloud)
+    if (getCurrentEnvironment() === 'dip-cloud') {
       return this.queryDataView('2004376134633480194', options);
     }
     return this.queryDataView(DATA_VIEW_MAPPING.CUSTOMER, options);
@@ -229,8 +229,8 @@ class DataViewApiClient {
    * Query factories
    */
   async getFactories(options?: DataViewQueryOptions) {
-    // Special handling for Brain Mode (huida-new)
-    if (getCurrentEnvironment() === 'huida-new') {
+    // Special handling for Brain Mode (dip-cloud)
+    if (getCurrentEnvironment() === 'dip-cloud') {
       return this.queryDataView('2004376134629285892', options);
     }
     return this.queryDataView(DATA_VIEW_MAPPING.FACTORY, options);
@@ -254,8 +254,8 @@ class DataViewApiClient {
    * Query suppliers
    */
   async getSuppliers(options?: DataViewQueryOptions) {
-    // Special handling for Brain Mode (huida-new)
-    if (getCurrentEnvironment() === 'huida-new') {
+    // Special handling for Brain Mode (dip-cloud)
+    if (getCurrentEnvironment() === 'dip-cloud') {
       return this.queryDataView('2004376134633480193', options);
     }
     return this.queryDataView(DATA_VIEW_MAPPING.SUPPLIER, options);
@@ -272,8 +272,8 @@ class DataViewApiClient {
    * Query products
    */
   async getProducts(options?: DataViewQueryOptions) {
-    // Special handling for Brain Mode (huida-new)
-    if (getCurrentEnvironment() === 'huida-new') {
+    // Special handling for Brain Mode (dip-cloud)
+    if (getCurrentEnvironment() === 'dip-cloud') {
       return this.queryDataView('2004376134620897282', options);
     }
     return this.queryDataView(DATA_VIEW_MAPPING.PRODUCT, options);
@@ -283,8 +283,8 @@ class DataViewApiClient {
    * Query materials
    */
   async getMaterials(options?: DataViewQueryOptions) {
-    // Special handling for Brain Mode (huida-new)
-    if (getCurrentEnvironment() === 'huida-new') {
+    // Special handling for Brain Mode (dip-cloud)
+    if (getCurrentEnvironment() === 'dip-cloud') {
       return this.queryDataView('2004376134629285891', options);
     }
     return this.queryDataView(DATA_VIEW_MAPPING.MATERIAL, options);
@@ -308,8 +308,8 @@ class DataViewApiClient {
    * Query warehouses
    */
   async getWarehouses(options?: DataViewQueryOptions) {
-    // Special handling for Brain Mode (huida-new)
-    if (getCurrentEnvironment() === 'huida-new') {
+    // Special handling for Brain Mode (dip-cloud)
+    if (getCurrentEnvironment() === 'dip-cloud') {
       return this.queryDataView('2004376134625091585', options);
     }
     return this.queryDataView(DATA_VIEW_MAPPING.WAREHOUSE, options);
@@ -319,8 +319,8 @@ class DataViewApiClient {
    * Query orders
    */
   async getOrders(options?: DataViewQueryOptions) {
-    // Special handling for Brain Mode (huida-new)
-    if (getCurrentEnvironment() === 'huida-new') {
+    // Special handling for Brain Mode (dip-cloud)
+    if (getCurrentEnvironment() === 'dip-cloud') {
       return this.queryDataView('2004376134629285890', options);
     }
     return this.queryDataView(DATA_VIEW_MAPPING.ORDER, options);

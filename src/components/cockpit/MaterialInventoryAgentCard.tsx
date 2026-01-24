@@ -1,7 +1,7 @@
 /**
  * 物料库存智能体卡片组件
  * 
- * 在惠达供应链大脑模式下，从API获取物料库存数据
+ * 在DIP供应链大脑模式下，从API获取物料库存数据
  */
 
 import { useEffect, useState } from 'react';
@@ -74,7 +74,7 @@ const MaterialInventoryAgentCard = ({ onNavigate }: Props) => {
 
             {/* 说明 */}
             <div className="text-xs text-gray-500 bg-gray-50 rounded p-3">
-                💡 物料库存数据从惠达数据API实时获取（指标模型: {MATERIAL_INVENTORY_METRIC_ID}）
+                💡 物料库存数据从DIP数据API实时获取（指标模型: {MATERIAL_INVENTORY_METRIC_ID}）
             </div>
         </div>
     );

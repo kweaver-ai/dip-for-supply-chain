@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { fetchLegalRisks } from '../../services/legalRiskService';
 import { loadSupplierPerformanceScores, loadSupplierEntities } from '../../services/ontologyDataService';
-import { loadHDSupplierScorecard } from '../../services/hdSupplierDataLoader';
+import { loadSupplierList } from '../../services/supplierDataLoader';
 import RiskBadge from './RiskBadge';
 import SupplierSelector from './SupplierSelector';
 import type { Supplier360Scorecard as Supplier360ScorecardType } from '../../types/ontology';
@@ -67,14 +67,8 @@ const Supplier360Scorecard = ({
       setLoading(true);
       try {
         // 大脑模式：使用供应链数据
-        const hdScorecard = await loadHDSupplierScorecard(currentSupplierId);
-        if (hdScorecard) {
-          console.log('✅ Loaded HD scorecard for', hdScorecard.supplierName);
-          setScorecard(hdScorecard);
-          return;
-        }
-        // 如果HD数据找不到，继续尝试Mock数据
-        console.warn('HD scorecard not found, falling back to mock data');
+        // 如果DIP数据找不到，继续尝试Mock数据
+        console.warn('DIP scorecard not found, falling back to mock data');
 
         // Mock模式：使用原有数据
         const [supplierPerformances, supplierEntities] = await Promise.all([

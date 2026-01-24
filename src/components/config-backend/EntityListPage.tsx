@@ -215,9 +215,9 @@ const EntityListPage = ({ entityType }: Props) => {
               {/* Data source indicator */}
               <div
                 className="px-3 py-1.5 text-xs rounded-lg font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white border border-transparent"
-                title="当前使用惠达供应链大脑API数据"
+                title="当前使用DIP供应链大脑API数据"
               >
-                🌐 惠达供应链大脑
+                🌐 DIP供应链大脑
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />

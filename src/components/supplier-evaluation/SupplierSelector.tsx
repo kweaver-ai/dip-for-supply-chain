@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react';
 import { getSuppliersByPurchaseAmount } from '../../services/supplierService';
 import type { Supplier } from '../../types/ontology';
 
-import { loadHDSupplierList } from '../../services/hdSupplierDataLoader';
+import { loadSupplierList } from '../../services/supplierDataLoader';
 
 interface SupplierSelectorProps {
   selectedSupplierId?: string | null;
@@ -35,10 +35,10 @@ const SupplierSelector = ({
         let data: Array<any> = [];
 
         // 大脑模式：加载供应商
-        const hdSuppliers = await loadHDSupplierList();
+        const hdSuppliers = await loadSupplierList();
         data = hdSuppliers.map(s => ({
           ...s,
-          annualPurchaseAmount: 0 // HD数据中此字段仅用于排序，列表展示时已有排序
+          annualPurchaseAmount: 0 // DIP数据中此字段仅用于排序，列表展示时已有排序
         })) as any;
 
         // Remove duplicates by supplierId

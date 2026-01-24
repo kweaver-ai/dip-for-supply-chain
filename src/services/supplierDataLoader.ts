@@ -1,7 +1,7 @@
 /**
- * HD Supplier Data Loader
+ * Supplier Data Loader
  * 
- * Provides HD supplier data loading from API.
+ * Provides supplier data loading from API.
  * Replaces CSV-based data loading with API calls to ontology.
  */
 
@@ -10,11 +10,11 @@ import { loadSupplierEntities, loadSupplierPerformanceScores } from './ontologyD
 import type { Supplier360Scorecard } from '../types/ontology';
 
 /**
- * Load HD supplier 360 scorecards
+ * Load supplier 360 scorecards
  * Combines supplier entities with performance scores
  */
-export async function loadHDSupplier360Scorecards(): Promise<Supplier360Scorecard[]> {
-    console.log('[HDSupplierDataLoader] Loading HD supplier 360 scorecards...');
+export async function loadSupplier360Scorecards(): Promise<Supplier360Scorecard[]> {
+    console.log('[SupplierDataLoader] Loading supplier 360 scorecards...');
 
     try {
         // Load supplier data and performance scores in parallel
@@ -69,50 +69,50 @@ export async function loadHDSupplier360Scorecards(): Promise<Supplier360Scorecar
             };
         });
 
-        console.log(`[HDSupplierDataLoader] Loaded ${scorecards.length} supplier scorecards`);
+        console.log(`[SupplierDataLoader] Loaded ${scorecards.length} supplier scorecards`);
         return scorecards;
     } catch (error) {
-        console.error('[HDSupplierDataLoader] Failed to load supplier scorecards:', error);
+        console.error('[SupplierDataLoader] Failed to load supplier scorecards:', error);
         return [];
     }
 }
 
 /**
- * Load HD supplier list
+ * Load supplier list
  * Returns basic supplier information
  */
-export async function loadHDSupplierList(): Promise<any[]> {
-    console.log('[HDSupplierDataLoader] Loading HD supplier list...');
+export async function loadSupplierList(): Promise<any[]> {
+    console.log('[SupplierDataLoader] Loading supplier list...');
 
     try {
         const suppliers = await loadSupplierEntities();
-        console.log(`[HDSupplierDataLoader] Loaded ${suppliers.length} suppliers`);
+        console.log(`[SupplierDataLoader] Loaded ${suppliers.length} suppliers`);
         return suppliers;
     } catch (error) {
-        console.error('[HDSupplierDataLoader] Failed to load supplier list:', error);
+        console.error('[SupplierDataLoader] Failed to load supplier list:', error);
         return [];
     }
 }
 
 /**
- * Load HD supplier scorecard for a specific supplier
+ * Load supplier scorecard for a specific supplier
  * @param supplierId - Supplier ID
  */
-export async function loadHDSupplierScorecard(supplierId: string): Promise<Supplier360Scorecard | null> {
-    console.log(`[HDSupplierDataLoader] Loading scorecard for supplier: ${supplierId}`);
+export async function loadSupplierScorecard(supplierId: string): Promise<Supplier360Scorecard | null> {
+    console.log(`[SupplierDataLoader] Loading scorecard for supplier: ${supplierId}`);
 
     try {
-        const scorecards = await loadHDSupplier360Scorecards();
+        const scorecards = await loadSupplier360Scorecards();
         const scorecard = scorecards.find(s => s.supplierId === supplierId);
 
         if (!scorecard) {
-            console.warn(`[HDSupplierDataLoader] Scorecard not found for supplier: ${supplierId}`);
+            console.warn(`[SupplierDataLoader] Scorecard not found for supplier: ${supplierId}`);
             return null;
         }
 
         return scorecard;
     } catch (error) {
-        console.error(`[HDSupplierDataLoader] Failed to load scorecard for ${supplierId}:`, error);
+        console.error(`[SupplierDataLoader] Failed to load scorecard for ${supplierId}:`, error);
         return null;
     }
 }

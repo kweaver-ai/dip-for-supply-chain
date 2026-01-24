@@ -60,8 +60,8 @@ export const entityConfigs = new Map<string, EntityConfig>();
 
 // Static user data
 export const usersData: Record<number, User> = {
-  1: { userId: 1, name: '管理员', role: 'admin', email: 'admin@huida.com', phone: '13888888888', avatar: '👨‍💼', department: 'IT', status: 'active' },
-  2: { userId: 2, name: '采购专员', role: 'procurement', email: 'buyer@huida.com', phone: '13888888889', avatar: '👩‍💼', department: '采购部', status: 'active' }
+  1: { userId: 1, name: '管理员', role: 'admin', email: 'admin@example.com', phone: '13888888888', avatar: '👨‍💼', department: 'IT', status: 'active' },
+  2: { userId: 2, name: '采购专员', role: 'procurement', email: 'buyer@example.com', phone: '13888888889', avatar: '👩‍💼', department: '采购部', status: 'active' }
 };
 
 export const rolesData: Record<string, Role> = {

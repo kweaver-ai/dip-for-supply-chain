@@ -170,9 +170,9 @@ function getEnvConfig(): Partial<{
 
 /**
  * API 环境类型
- * - huida-new: 供应链大脑模式，对接数据 API
+ * - dip-cloud: 供应链大脑模式，对接数据 API
  */
-export type ApiEnvironment = 'huida-new';
+export type ApiEnvironment = 'dip-cloud';
 
 /** 环境配置接口 */
 export interface EnvironmentConfig {
@@ -197,12 +197,12 @@ export interface EnvironmentConfig {
  * 环境配置集合
  * 
  * 数据模式：
- * - huida-new (供应链大脑): 对接数据 API，提供优化后的数据服务
+ * - dip-cloud (供应链大脑): 对接数据 API，提供优化后的数据服务
  */
 export const ENVIRONMENTS: Record<ApiEnvironment, EnvironmentConfig> = {
 
 
-  'huida-new': {
+  'dip-cloud': {
     name: '供应链大脑',
     description: '对接数据 API',
     baseUrl: '',
@@ -218,7 +218,7 @@ export const ENVIRONMENTS: Record<ApiEnvironment, EnvironmentConfig> = {
 };
 
 /** 默认环境 */
-export const DEFAULT_ENVIRONMENT: ApiEnvironment = 'huida-new';
+export const DEFAULT_ENVIRONMENT: ApiEnvironment = 'dip-cloud';
 
 /** localStorage 存储键 */
 const ENVIRONMENT_STORAGE_KEY = 'api-environment';
@@ -229,7 +229,7 @@ const ENVIRONMENT_STORAGE_KEY = 'api-environment';
 export function getCurrentEnvironment(): ApiEnvironment {
   try {
     const stored = localStorage.getItem(ENVIRONMENT_STORAGE_KEY);
-    return (stored === 'huida-new')
+    return (stored === 'dip-cloud')
       ? stored
       : DEFAULT_ENVIRONMENT;
   } catch (error) {
@@ -362,7 +362,7 @@ export const knowledgeNetworkPresets: KnowledgeNetworkPreset[] = [
     description: '管理配置后台业务知识网络',
     isDefault: false,
     category: 'production',
-    tags: ['huida-new', 'brain'],
+    tags: ['dip-cloud', 'brain'],
   },
   // 可以添加更多预设配置
 ];
@@ -377,7 +377,7 @@ const initialEnvConfig = ENVIRONMENTS[initialEnv];
 
 /** 当前知识网络ID（可运行时修改） */
 const envDefaultKnId = envConfig.knowledgeNetworkId ||
-  (initialEnv === 'huida-new' ? 'd56v1l69olk4bpa66uv0' : DEFAULT_KNOWLEDGE_NETWORK_ID);
+  (initialEnv === 'dip-cloud' ? 'd56v1l69olk4bpa66uv0' : DEFAULT_KNOWLEDGE_NETWORK_ID);
 
 let currentKnowledgeNetworkId: string = getGlobalKnowledgeNetworkId(envDefaultKnId);
 

@@ -21,7 +21,7 @@ interface OrderAnalysisResult {
 }
 
 // Note: Metric Model ID is now loaded from config service
-// - Product Inventory Optimization: mm_product_inventory_optimization_huida
+// - Product Inventory Optimization: mm_product_inventory_optimization_dip
 const PRODUCT_INVENTORY_DIMENSIONS = ['material_code', 'material_name', 'available_quantity'];
 const SUPPORTED_PRODUCTS = ['T01-000055', 'T01-000167', 'T01-000173'];
 

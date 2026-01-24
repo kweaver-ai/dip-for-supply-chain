@@ -90,16 +90,16 @@ class ConfigStorageService {
                 }
 
 
-                // MIGRATION 1.0.6: Add new metric models for inventory and graph
+                // MIGRATION 1.0.9: Add new metric models and remove DIP/Huida references
                 if (!parsed.metricModels) parsed.metricModels = [];
                 const defaults = this.getDefaultConfig();
                 const newMetricIds = [
-                    'mm_product_inventory_optimization_huida',
-                    'mm_material_inventory_optimization_huida',
-                    'mm_order_demand_huida',
-                    'mm_product_count_huida',
-                    'mm_material_count_huida',
-                    'mm_supplier_count_huida'
+                    'mm_product_inventory_optimization_dip',
+                    'mm_material_inventory_optimization_dip',
+                    'mm_order_demand_dip',
+                    'mm_product_count_dip',
+                    'mm_material_count_dip',
+                    'mm_supplier_count_dip'
                 ];
 
                 let addedMetrics = 0;
@@ -118,31 +118,46 @@ class ConfigStorageService {
                     console.log(`[ConfigStorage] Migration: Added ${addedMetrics} new metric models`);
                 }
 
-                // MIGRATION 1.0.9: Remove all Huida references from IDs
+                // Remove legacy Huida/DIP references from IDs
                 const idMappings: Record<string, string> = {
                     // Knowledge Networks
                     'kn_huida': 'kn_supply_chain_brain',
+                    'kn_dip': 'kn_supply_chain_brain',
                     // Ontology Objects
                     'oo_supplier_huida': 'oo_supplier',
+                    'oo_supplier_dip': 'oo_supplier',
                     'oo_supplier_evaluation_huida': 'oo_supplier_evaluation',
+                    'oo_supplier_evaluation_dip': 'oo_supplier_evaluation',
                     'oo_material_huida': 'oo_material',
+                    'oo_material_dip': 'oo_material',
                     'oo_product_huida': 'oo_product',
+                    'oo_product_dip': 'oo_product',
                     'oo_bom_huida': 'oo_bom',
+                    'oo_bom_dip': 'oo_bom',
                     'oo_inventory_huida': 'oo_inventory',
+                    'oo_inventory_dip': 'oo_inventory',
                     'oo_sales_order_huida': 'oo_sales_order',
+                    'oo_sales_order_dip': 'oo_sales_order',
                     'oo_customer_huida': 'oo_customer',
+                    'oo_customer_dip': 'oo_customer',
                     'oo_production_plan_huida': 'oo_production_plan',
+                    'oo_production_plan_dip': 'oo_production_plan',
                     // Metric Models
                     'mm_order_demand_huida': 'mm_order_demand',
+                    'mm_order_demand_dip': 'mm_order_demand',
                     'mm_product_count_huida': 'mm_product_count',
+                    'mm_product_count_dip': 'mm_product_count',
                     'mm_material_count_huida': 'mm_material_count',
+                    'mm_material_count_dip': 'mm_material_count',
                     'mm_supplier_count_huida': 'mm_supplier_count',
+                    'mm_supplier_count_dip': 'mm_supplier_count',
                     'mm_product_inventory_optimization_huida': 'mm_product_inventory_optimization',
-                    'mm_material_inventory_optimization_huida': 'mm_material_inventory_optimization'
+                    'mm_product_inventory_optimization_dip': 'mm_product_inventory_optimization',
+                    'mm_material_inventory_optimization_huida': 'mm_material_inventory_optimization',
+                    'mm_material_inventory_optimization_dip': 'mm_material_inventory_optimization'
                 };
 
                 let migratedCount = 0;
-                // Migrate all configuration arrays
                 (['knowledgeNetworks', 'ontologyObjects', 'metricModels'] as const).forEach(key => {
                     if (parsed[key]) {
                         parsed[key]!.forEach((item: any) => {
@@ -155,7 +170,7 @@ class ConfigStorageService {
                 });
 
                 if (migratedCount > 0) {
-                    console.log(`[ConfigStorage] Migration 1.0.9: Removed Huida references from ${migratedCount} configuration IDs`);
+                    console.log(`[ConfigStorage] Migration 1.0.9: Removed DIP/Huida references from ${migratedCount} configuration IDs`);
                 }
 
                 // Update version and save immediately

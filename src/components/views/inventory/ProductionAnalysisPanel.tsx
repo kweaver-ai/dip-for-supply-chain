@@ -179,7 +179,7 @@ function analyzeData(
 // 子组件：分析图表（带右侧文字分析）
 // ============================================================================
 
-interface HuidaStyleChartProps {
+interface CustomStyleChartProps {
     title: string;
     chartTitle: string;
     data: ChartDataPoint[];
@@ -188,7 +188,7 @@ interface HuidaStyleChartProps {
     totalStagnantValue: number;
 }
 
-const HuidaStyleChart: React.FC<HuidaStyleChartProps> = ({
+const CustomStyleChart: React.FC<CustomStyleChartProps> = ({
     title,
     chartTitle,
     data,
@@ -634,7 +634,7 @@ export const ProductionAnalysisPanel: React.FC<ProductionAnalysisPanelProps> = (
             />
 
             {/* 按起订量分析 */}
-            <HuidaStyleChart
+            <CustomStyleChart
                 title="1. 按起订量分析"
                 chartTitle="实际补料金额与剩余呆滞料金额随生产数量的变化"
                 data={chartDataWithMOQ}
@@ -644,7 +644,7 @@ export const ProductionAnalysisPanel: React.FC<ProductionAnalysisPanelProps> = (
             />
 
             {/* 无起订量分析 */}
-            <HuidaStyleChart
+            <CustomStyleChart
                 title="2. 无起订量分析"
                 chartTitle="实际补料金额与新增呆滞金额随生产数量的变化"
                 data={chartDataNoMOQ}

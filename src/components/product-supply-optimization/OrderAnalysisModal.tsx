@@ -6,8 +6,8 @@ import { fetchInventory } from '../../services/mpsDataService';
 import type { QueryCondition } from '../../api/ontologyApi';
 
 // Note: Object Type IDs are now loaded from config service
-// - Sales Order: oo_sales_order_huida
-// - Inventory: oo_inventory_huida
+// - Sales Order: oo_sales_order_dip
+// - Inventory: oo_inventory_dip
 
 // 销售订单接口
 interface SalesOrder {

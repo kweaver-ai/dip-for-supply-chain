@@ -17,10 +17,10 @@ import {
 // ============================================================================
 
 /**
- * HD供应链业务知识网络标准常量
+ * DIP供应链业务知识网络标准常量
  */
 export const HD_SUPPLY_CHAIN_KN_ID = 'd56v1l69olk4bpa66uv0';
-export const HD_SUPPLY_CHAIN_KN_NAME = 'HD供应链业务知识网络';
+export const HD_SUPPLY_CHAIN_KN_NAME = 'DIP供应链业务知识网络';
 
 // ============================================================================
 // Type Definitions

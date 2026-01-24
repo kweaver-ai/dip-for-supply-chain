@@ -1,51 +1,88 @@
-# DIP for Supply Chain (SupplyChainBrain)
+# DIP for Supply Chain
 
-供应链大脑 (Supply Chain Brain) 是一个基于 DIP (Data Intelligence Platform) 的供应链管理智能应用。
+**DIP for Supply Chain** is a Supply Chain Management Intelligent Application based on DIP (Decision Intelligence Platform).
 
-## 目录结构
+## Directory Structure
 
-- `src/`: 前端源代码 (React + Vite)
-- `backend/`: 预测服务 (Python + Prophet)
-- `buildkit/`: DIP 应用打包工具
-- `scripts/`: 辅助脚本
+- `src/`: Frontend Source Code (React + Vite)
+- `backend/`: Forecast Services (Python + Prophet)
+- `buildkit/`: DIP Application Packaging Tool
+- `scripts/`: Helper Scripts
+- `sample_data/`: Sample Data (JSON formatted)
 
-## 开发指南 (Development Mode)
+## Data Models & Samples
 
-在开发模式下，前端直接连接到 ADP 环境。
+Sample data conforming to the ontology definitions is available in the `sample_data/` directory:
 
-### 1. 环境准备
+- **[suppliers.json](sample_data/suppliers.json)**: Supplier profiles with risk ratings and performance metrics.
+- **[products.json](sample_data/products.json)**: Product data including BOM structures and inventory status.
+- **[materials.json](sample_data/materials.json)**: Material inventory data.
+- **[orders.json](sample_data/orders.json)**: Sample orders spanning production and delivery cycles.
+
+## System Architecture
+
+**DIP for Supply Chain** is an **Upper-Layer Decision Intelligence Application** built upon the KWeaver ecosystem. The architecture consists of the following core layers:
+
+1.  **DIP (Decision Intelligence Platform)**
+    *   **Role**: Foundation Platform
+    *   **Function**: Manages the lifecycle, installation, and runtime environment of intelligent applications.
+
+2.  **DIP Studio**
+    *   **Role**: Identity & Access Management
+    *   **Function**: Centralized account management and user authentication system ensuring enterprise-grade security.
+
+3.  **AI Data Platform (ADP)**
+    *   **Role**: Unified Data Foundation
+    *   **Function**: Manages data assets including:
+        *   **Data Ingestion**: Collection and integration of multi-source heterogeneous data.
+        *   **Business Knowledge Network (Ontology)**: Construction of domain-specific ontology models and knowledge graphs.
+        *   **Metric Models**: Definition and calculation of key business metrics.
+
+4.  **Decision Agent**
+    *   **Role**: Intelligent Agent Engine
+    *   **Function**: Configuration, orchestration, and lifecycle management of intelligent agents, providing reasoning and execution capabilities.
+
+5.  **DIP for Supply Chain (This Application)**
+    *   **Role**: Vertical Decision Intelligence Application
+    *   **Function**: Provides visualization, prediction, and decision support tailored for supply chain management.
+
+## Development Mode
+
+In development mode, the frontend connects directly to the ADP environment.
+
+### 1. Prerequisites
 
 - Node.js (v18+)
 - Python (v3.10+)
-- uv (Python 包管理工具)
+- uv (Python Package Manager)
 
-### 2. 配置环境变量
+### 2. Environment Configuration
 
-复制 `.env.example` 到 `.env.local` 并配置你的 ADP Token：
+Copy `.env.example` to `.env.local` and configure your ADP Token:
 
 ```bash
 cp .env.example .env.local
 ```
 
-在 `.env.local` 中设置：
+Set the following in `.env.local`:
 ```ini
 VITE_AGENT_API_TOKEN=your_actual_token_here
 ```
 
-### 3. 启动应用
+### 3. Start Application
 
-安装依赖并启动前端开发服务器：
+Install dependencies and start the frontend development server:
 
 ```bash
 npm install
 npm run dev
 ```
 
-启动后端预测服务 (如需要)：
+Start the backend forecast service (application specific):
 
 ```bash
 cd backend
-# 创建并激活虚拟环境
+# Create and activate virtual environment
 python -m venv venv
 # Windows
 .\venv\Scripts\activate
@@ -56,13 +93,13 @@ pip install -r requirements.txt
 python run.py
 ```
 
-## 用户使用模式 (User Mode)
+## User Mode
 
-用户模式下，应用被打包为 `.dip` 文件，并通过 DIP 应用商店安装。
+In user mode, the application is packaged as a `.dip` file and installed via the DIP App Store.
 
-### 1. 打包应用
+### 1. Package Application
 
-本项目使用 `buildkit` 进行打包。
+This project uses `buildkit` for packaging.
 
 ```bash
 cd buildkit
@@ -72,19 +109,19 @@ uv venv
 # Linux/Mac
 source .venv/bin/activate
 
-# 构建 AMD64 架构包
+# Build AMD64 Package
 uv run scripts/build_package.py --arch=amd64
 
-# 构建 ARM64 架构包
+# Build ARM64 Package
 uv run scripts/build_package.py --arch=arm64
 ```
 
-### 2. 获取安装包
+### 2. Retrieve Package
 
-打包完成后，在 `buildkit/.cache/<timestamp>/package/` 目录下找到生成的 `.dip` 文件。
+After packaging, locate the generated `.dip` file in the `buildkit/.cache/<timestamp>/package/` directory.
 
-### 3. 安装
+### 3. Installation
 
-1. 登录 DIP 平台。
-2. 进入应用商店。
-3. 上传并安装生成的 `.dip` 文件。
+1. Log in to the DIP Platform.
+2. Go to the App Store.
+3. Upload and install the generated `.dip` file.
