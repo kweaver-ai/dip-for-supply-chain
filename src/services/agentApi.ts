@@ -216,11 +216,26 @@ class AgentApiClient {
   }
 
   /**
-   * Get app key from config - uses DIP-specific key in DIP mode
+   * Get app key from config - prioritizes config center value, falls back to DIP key or default
    */
   private get appKey(): string {
+    // 1. 优先使用配置中心的值（通过 apiConfigService 同步到 runtime config）
+    const configAppKey = getServiceConfig('agent').appKey;
+
+    // 2. 如果配置中心有值且不是默认硬编码值，使用配置值
+    const DEFAULT_APP_KEY = '01KEX8BP0GR6TMXQR7GE3XN16A';
+    if (configAppKey && configAppKey !== DEFAULT_APP_KEY) {
+      return configAppKey;
+    }
+
+    // 3. DIP 模式下使用 DIP 特定的 key 作为 fallback
     const dipKey = dipEnvironmentService.getAgentAppKey();
-    return dipKey || getServiceConfig('agent').appKey;
+    if (dipKey) {
+      return dipKey;
+    }
+
+    // 4. 最终 fallback 到配置值或默认值
+    return configAppKey || DEFAULT_APP_KEY;
   }
 
   /**

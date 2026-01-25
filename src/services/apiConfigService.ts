@@ -22,7 +22,7 @@ import { configStorageService } from './configStorageService';
 import { ontologyApi } from '../api/ontologyApi';
 import { dataViewApi } from '../api/dataViewApi';
 import { metricModelApi } from '../api/metricModelApi';
-import { getKnowledgeNetworkId, setKnowledgeNetworkId, getAuthHeaders } from '../config/apiConfig';
+import { getKnowledgeNetworkId, setKnowledgeNetworkId, getAuthHeaders, getApiConfig, updateApiConfig } from '../config/apiConfig';
 import { dipEnvironmentService } from './dipEnvironmentService';
 
 // ============================================================================
@@ -170,6 +170,36 @@ class ApiConfigService {
                 }
                 break;
             }
+            case ApiConfigType.AGENT: {
+                const agentConfig = config as AgentConfig;
+                if (agentConfig.enabled && agentConfig.appKey) {
+                    // Sync appKey to runtime config so agentApi.ts picks up the change
+                    this.syncAgentAppKey(agentConfig.appKey);
+                    console.log(`[ApiConfigService] Synced runtime Agent appKey: ${agentConfig.appKey}`);
+                }
+                break;
+            }
+        }
+    }
+
+    /**
+     * Sync Agent appKey to global runtime configuration.
+     * This updates the runtime config that agentApi.ts uses for API calls.
+     */
+    private syncAgentAppKey(appKey: string): void {
+        try {
+            const currentConfig = getApiConfig();
+            updateApiConfig({
+                services: {
+                    ...currentConfig.services,
+                    agent: {
+                        ...currentConfig.services.agent,
+                        appKey: appKey
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('[ApiConfigService] Failed to sync agent appKey:', err);
         }
     }
 
@@ -581,6 +611,40 @@ class ApiConfigService {
     resetToDefaults(): void {
         this.storage.resetToDefaults();
     }
+
+    /**
+     * Initialize runtime state from stored configurations.
+     * This should be called on app startup to sync saved configs to runtime.
+     * Particularly important for Agent appKey which is used by agentApi.ts.
+     */
+    initializeRuntimeState(): void {
+        try {
+            const configs = this.getAllConfigs();
+
+            // Sync enabled agent config's appKey to runtime
+            const enabledAgents = configs.agents.filter(a => a.enabled);
+            if (enabledAgents.length > 0) {
+                // Use the first enabled agent's appKey
+                const primaryAgent = enabledAgents[0];
+                if (primaryAgent.appKey) {
+                    this.syncAgentAppKey(primaryAgent.appKey);
+                    console.log(`[ApiConfigService] Initialized agent appKey from stored config: ${primaryAgent.appKey}`);
+                }
+            }
+
+            // Sync enabled knowledge network config
+            const enabledKnConfigs = configs.knowledgeNetworks.filter(kn => kn.enabled);
+            if (enabledKnConfigs.length > 0) {
+                const primaryKn = enabledKnConfigs[0];
+                if (primaryKn.knowledgeNetworkId) {
+                    setKnowledgeNetworkId(primaryKn.knowledgeNetworkId);
+                    console.log(`[ApiConfigService] Initialized KN ID from stored config: ${primaryKn.knowledgeNetworkId}`);
+                }
+            }
+        } catch (error) {
+            console.error('[ApiConfigService] Failed to initialize runtime state:', error);
+        }
+    }
 }
 
 // ============================================================================
@@ -588,4 +652,9 @@ class ApiConfigService {
 // ============================================================================
 
 export const apiConfigService = new ApiConfigService();
+
+// Initialize runtime state on module load
+// This ensures stored configs are synced to runtime when app starts
+apiConfigService.initializeRuntimeState();
+
 export default apiConfigService;
